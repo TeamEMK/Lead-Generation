@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ps -p)",
+      "Bash(curl -s http://localhost:5001/api/health)",
+      "Bash(xargs -I{} ps -p {} -o pid,args)",
+      "Bash(gcloud services *)",
+      "Bash(gcloud artifacts *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(48\\).toString\\('hex'\\)\\)\")",
+      "Bash(chmod +x /Users/taaranjain/Developer/Office/Lead-Generation/dev.sh)",
+      "Bash(node -e ' *)",
+      "Bash(npx next *)"
+    ]
+  }
+}
