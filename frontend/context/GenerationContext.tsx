@@ -14,14 +14,23 @@ export type ProgressState = {
   etaMs: number
 }
 
+export type PausedState = {
+  remainingKeywords: string[]
+  savedSoFar: number
+  tokenBalance: number
+  scrapeEmails: boolean
+}
+
 interface GenerationContextValue {
   loading: boolean
   elapsed: number
   progress: ProgressState | null
-  result: { saved: number; skipped: number } | null
+  result: { saved: number; skipped: number; tokenBalance: number } | null
+  paused: PausedState | null
   leads: Lead[]
   error: string | null
   generate: (keywords: string[], scrapeEmails: boolean) => void
+  resume: () => void
   clear: () => void
 }
 
@@ -31,7 +40,8 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [progress, setProgress] = useState<ProgressState | null>(null)
-  const [result, setResult] = useState<{ saved: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{ saved: number; skipped: number; tokenBalance: number } | null>(null)
+  const [paused, setPaused] = useState<PausedState | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -50,12 +60,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [loading])
 
-  const generate = useCallback(async (keywords: string[], scrapeEmails: boolean) => {
+  const _run = useCallback(async (keywords: string[], scrapeEmails: boolean) => {
     setLoading(true)
     setError(null)
-    setResult(null)
+    setPaused(null)
     setProgress(null)
-    setLeads([])
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -70,6 +79,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({ error: 'Request failed' }))
+        if (res.status === 402) throw new Error('INSUFFICIENT_TOKENS:' + (data.error || ''))
         throw new Error(data.error || 'Failed to generate leads')
       }
 
@@ -96,14 +106,29 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             setProgress(p => p ? { ...p, phase: 'scraping' } : p)
           } else if (evt.type === 'keyword_done') {
             setProgress({ index: evt.index, total: evt.total, keyword: evt.keyword, phase: 'done', totalSoFar: evt.totalSoFar, etaMs: evt.etaMs })
+            if (evt.tokenBalance !== undefined) {
+              // live balance update mid-stream
+            }
           } else if (evt.type === 'keyword_error') {
             setProgress(p => p ? { ...p, phase: 'error' } : p)
-          } else if (evt.type === 'saving') {
-            setProgress(p => p ? { ...p, phase: 'saving' } : p)
-          } else if (evt.type === 'done') {
-            setResult({ saved: evt.saved, skipped: evt.skipped })
-            setLeads(evt.leads ?? [])
+          } else if (evt.type === 'token_exhausted') {
+            // Pause state — store remaining keywords for resume
+            setLeads(prev => {
+              const newLeads = (evt.leads ?? []).map((l: any, i: number) => ({ ...l, id: i + 1 }))
+              return newLeads.length > 0 ? newLeads : prev
+            })
+            setPaused({
+              remainingKeywords: evt.remainingKeywords ?? [],
+              savedSoFar: evt.savedSoFar ?? 0,
+              tokenBalance: evt.tokenBalance ?? 0,
+              scrapeEmails,
+            })
             setProgress(null)
+          } else if (evt.type === 'done') {
+            setResult({ saved: evt.saved, skipped: evt.skipped, tokenBalance: evt.tokenBalance ?? 0 })
+            setLeads((evt.leads ?? []).map((l: any, i: number) => ({ ...l, id: i + 1 })))
+            setProgress(null)
+            setPaused(null)
           } else if (evt.type === 'error') {
             setError(evt.message)
           }
@@ -117,18 +142,32 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [])
 
+  const generate = useCallback((keywords: string[], scrapeEmails: boolean) => {
+    setResult(null)
+    setLeads([])
+    _run(keywords, scrapeEmails)
+  }, [_run])
+
+  const resume = useCallback(() => {
+    if (!paused || paused.remainingKeywords.length === 0) return
+    const { remainingKeywords, scrapeEmails } = paused
+    setPaused(null)
+    _run(remainingKeywords, scrapeEmails)
+  }, [paused, _run])
+
   const clear = useCallback(() => {
     readerRef.current?.cancel()
     setLoading(false)
     setProgress(null)
     setResult(null)
+    setPaused(null)
     setLeads([])
     setError(null)
     setElapsed(0)
   }, [])
 
   return (
-    <GenerationContext.Provider value={{ loading, elapsed, progress, result, leads, error, generate, clear }}>
+    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, generate, resume, clear }}>
       {children}
     </GenerationContext.Provider>
   )

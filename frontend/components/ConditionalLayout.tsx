@@ -6,7 +6,7 @@ import AppLayout from './AppLayout'
 import { useAuth } from '../context/AuthContext'
 
 const AUTH_PATHS = ['/login', '/signup']
-const PUBLIC_PATHS = ['/']
+const PUBLIC_PATHS = ['/', '/select-plan']
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -20,7 +20,8 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   useEffect(() => {
     if (loading) return
     if (!user && isProtected) router.replace('/login')
-    if (user && isAuthPage) router.replace('/dashboard')
+    // Only auto-redirect from /login — signup handles its own redirect to /select-plan
+    if (user && pathname === '/login') router.replace('/dashboard')
   }, [user, loading, isAuthPage, isProtected, router])
 
   if (loading && isProtected) {

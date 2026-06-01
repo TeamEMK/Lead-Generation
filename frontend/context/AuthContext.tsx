@@ -8,8 +8,6 @@ export interface User {
   id: number
   name: string
   email: string
-  spreadsheet_id: string | null
-  google_connected: boolean
 }
 
 interface AuthContextValue {
@@ -18,8 +16,6 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
-  updateSheet: (url: string) => Promise<void>
-  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -67,27 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }, [])
 
-  const refreshUser = useCallback(async () => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-    const res = await fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-    if (res.ok) { const data = await res.json(); setUser(data.user) }
-  }, [])
-
-  const updateSheet = useCallback(async (url: string) => {
-    const token = localStorage.getItem('token')
-    const res = await fetch(`${API_URL}/api/auth/sheet`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ url }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Failed to link sheet')
-    setUser(prev => prev ? { ...prev, spreadsheet_id: data.spreadsheet_id } : prev)
-  }, [])
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateSheet, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )

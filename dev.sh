@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+export MallocStackLogging=0
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 

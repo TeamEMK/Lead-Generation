@@ -1,8 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail, Clock } from 'lucide-react'
+import {
+  Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail,
+  Clock, Coins, PauseCircle, PlayCircle, ShoppingCart, Tag,
+} from 'lucide-react'
 import { useGeneration } from '../context/GenerationContext'
+import { fetchPlans, purchasePlan, type Plan } from '../lib/api'
 
 function fmtTime(ms: number) {
   const s = Math.ceil(ms / 1000)
@@ -13,10 +17,54 @@ function fmtTime(ms: number) {
   return rem > 0 ? `${m}m ${rem}s` : `${m}m`
 }
 
+function PlanCard({ plan, onBuy, buying }: { plan: Plan; onBuy: () => void; buying: boolean }) {
+  return (
+    <div className={`relative rounded-xl border p-4 flex flex-col gap-3 ${
+      plan.popular
+        ? 'border-indigo-400 dark:border-indigo-500/50 bg-indigo-50 dark:bg-indigo-500/10'
+        : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02]'
+    }`}>
+      {plan.popular && (
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-600 text-white tracking-wider">
+          BEST VALUE
+        </span>
+      )}
+      <div>
+        <p className={`text-xs font-bold uppercase tracking-widest ${plan.popular ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-500'}`}>{plan.name}</p>
+        <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">₹{plan.price_inr.toLocaleString()}</p>
+      </div>
+      <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+        <Coins className="w-3.5 h-3.5" />{plan.tokens.toLocaleString()} tokens
+      </div>
+      <p className="text-xs text-slate-400 dark:text-slate-500">₹{plan.price_per_token}/token</p>
+      <button
+        onClick={onBuy}
+        disabled={buying}
+        className={`w-full py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+          plan.popular
+            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20'
+            : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100'
+        }`}
+      >
+        {buying ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
+        {buying ? 'Processing…' : 'Buy Now'}
+      </button>
+    </div>
+  )
+}
+
 export default function GeneratorForm() {
-  const { loading, elapsed, progress, result, error, generate } = useGeneration()
+  const { loading, elapsed, progress, result, paused, error, generate, resume } = useGeneration()
   const [keywords, setKeywords] = useState('')
   const [scrapeEmails, setScrapeEmails] = useState(false)
+
+  // Plan purchase state (shown when paused)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [plansLoading, setPlansLoading] = useState(false)
+  const [plansLoaded, setPlansLoaded] = useState(false)
+  const [purchasing, setPurchasing] = useState<number | null>(null)
+  const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [purchasedBalance, setPurchasedBalance] = useState<number | null>(null)
 
   const keywordList = keywords.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
   const keywordCount = keywordList.length
@@ -24,55 +72,107 @@ export default function GeneratorForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (keywordList.length === 0) return
+    setPurchasedBalance(null)
     generate(keywordList, scrapeEmails)
+  }
+
+  async function loadPlans() {
+    if (plansLoaded) return
+    setPlansLoading(true)
+    try {
+      const p = await fetchPlans()
+      setPlans(p)
+      setPlansLoaded(true)
+    } finally {
+      setPlansLoading(false)
+    }
+  }
+
+  async function handleBuy(plan: Plan) {
+    setPurchasing(plan.id)
+    setPurchaseError(null)
+    try {
+      const res = await purchasePlan(plan.id)
+      setPurchasedBalance(res.balance)
+    } catch (e: any) {
+      setPurchaseError(e.message)
+    } finally {
+      setPurchasing(null)
+    }
   }
 
   const barPct = progress
     ? Math.min(((progress.index + (progress.phase === 'done' ? 1 : 0.5)) / progress.total) * 100, 98)
     : 0
 
+  const canResume = paused && paused.remainingKeywords.length > 0 && purchasedBalance !== null && purchasedBalance > 0
+
   return (
-    <form id="generate-form" onSubmit={handleSubmit} className="space-y-6">
+    <form id="generate-form" onSubmit={handleSubmit} className="space-y-5">
+
       {/* Keywords */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Keywords</label>
           {keywordCount > 0 ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
-              <Hash className="w-3 h-3" />
-              {keywordCount} keyword{keywordCount > 1 ? 's' : ''}
+              <Hash className="w-3 h-3" />{keywordCount} keyword{keywordCount > 1 ? 's' : ''}
             </span>
           ) : (
-            <span className="text-xs text-slate-400 dark:text-slate-500">one per line or comma-separated</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">one per line or comma</span>
           )}
         </div>
         <textarea
           value={keywords}
           onChange={e => setKeywords(e.target.value)}
-          placeholder={"hotel\nhospital\nhome furnishing store\nresort"}
+          placeholder={[
+            '# Single city — any country',
+            'hotels in Mumbai',
+            'restaurants in Dubai',
+            'clinics in New York',
+            'salons in London',
+            '',
+            '# Multiple cities (comma-separated)',
+            'hotels in Mumbai, Delhi, Bangalore',
+            'restaurants in Paris, Berlin, Rome',
+            '',
+            '# State / province / country',
+            'hotels in Maharashtra',
+            'car dealers in California',
+            'IT companies in India',
+          ].join('\n')}
           rows={10}
-          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm font-mono resize-none transition-colors leading-relaxed"
+          disabled={loading || !!paused}
+          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm font-mono resize-none transition-colors leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
         />
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
-          Fetches all available results · duplicates are auto-skipped
-        </p>
+        <div className="mt-2 space-y-1">
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            One per line · works for <span className="font-semibold text-slate-500 dark:text-slate-400">any city, state, or country worldwide</span> · comma-separate for multiple cities
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            1 token per lead saved · duplicates auto-skipped
+          </p>
+        </div>
       </div>
+
+
 
       {/* Email scraping toggle */}
       <div
-        onClick={() => setScrapeEmails(v => !v)}
-        className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none ${
+        onClick={() => !loading && !paused && setScrapeEmails(v => !v)}
+        className={`flex items-start gap-3 p-4 rounded-xl border transition-all select-none ${
+          loading || paused ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+        } ${
           scrapeEmails
             ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30'
             : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.12]'
         }`}
       >
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-          scrapeEmails
-            ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+          scrapeEmails ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
             : 'bg-slate-100 dark:bg-white/[0.06] text-slate-400 dark:text-slate-500'
         }`}>
-          <Mail className="w-[18px] h-[18px]" />
+          <Mail className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
@@ -90,85 +190,183 @@ export default function GeneratorForm() {
       </div>
 
       {/* Error */}
-      {error && (
+      {error && !paused && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-sm">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          {error}
+          <span>
+            {error.startsWith('INSUFFICIENT_TOKENS:')
+              ? error.replace('INSUFFICIENT_TOKENS:', '')
+              : error}
+          </span>
+        </div>
+      )}
+
+      {/* ── PAUSED STATE ── */}
+      {paused && (
+        <div className="rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-start gap-3 p-4 border-b border-amber-200 dark:border-amber-500/20">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <PauseCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Generation paused — tokens exhausted</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                {paused.savedSoFar} leads saved · {paused.remainingKeywords.length} keyword{paused.remainingKeywords.length !== 1 ? 's' : ''} remaining
+              </p>
+            </div>
+          </div>
+
+          {/* Remaining keywords */}
+          <div className="px-4 py-3 border-b border-amber-200 dark:border-amber-500/20">
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Pending keywords</p>
+            <div className="flex flex-wrap gap-1.5">
+              {paused.remainingKeywords.map(kw => (
+                <span key={kw} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
+                  <Tag className="w-2.5 h-2.5" />{kw}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Buy tokens section */}
+          <div className="p-4">
+            {purchasedBalance !== null ? (
+              /* ── Purchased — show resume ── */
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Purchase successful! {purchasedBalance.toLocaleString()} tokens now available.
+                </div>
+                <button
+                  type="button"
+                  onClick={resume}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-bold shadow-md shadow-emerald-500/20 transition-all"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  Resume Generation ({paused.remainingKeywords.length} keyword{paused.remainingKeywords.length !== 1 ? 's' : ''} left)
+                </button>
+              </div>
+            ) : (
+              /* ── Buy tokens ── */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Buy tokens to continue</p>
+                  {!plansLoaded && (
+                    <button
+                      type="button"
+                      onClick={loadPlans}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                    >
+                      {plansLoading ? 'Loading…' : 'Show plans'}
+                    </button>
+                  )}
+                </div>
+
+                {purchaseError && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400">{purchaseError}</p>
+                )}
+
+                {plansLoading && (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+                  </div>
+                )}
+
+                {plansLoaded && plans.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1">
+                    {plans.map(plan => (
+                      <PlanCard
+                        key={plan.id}
+                        plan={plan}
+                        onBuy={() => handleBuy(plan)}
+                        buying={purchasing === plan.id}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {!plansLoaded && !plansLoading && (
+                  <button
+                    type="button"
+                    onClick={loadPlans}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-white dark:bg-white/[0.05] text-amber-700 dark:text-amber-300 text-sm font-semibold hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Buy more tokens to continue
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Success */}
-      {result && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+      {result && !paused && (
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 space-y-1.5">
           <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-semibold text-sm">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            {result.saved} new lead{result.saved !== 1 ? 's' : ''} saved to Google Sheets
+            {result.saved} new lead{result.saved !== 1 ? 's' : ''} saved
           </div>
           {result.skipped > 0 && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-1 ml-6">
+            <p className="text-xs text-emerald-600 dark:text-emerald-500 ml-6">
               {result.skipped} duplicate{result.skipped !== 1 ? 's' : ''} skipped
             </p>
           )}
+          <div className="flex items-center gap-1.5 ml-6 text-xs text-slate-400 dark:text-slate-500">
+            <Coins className="w-3 h-3" />
+            {result.tokenBalance.toLocaleString()} tokens remaining
+          </div>
         </div>
       )}
 
       {/* Live progress */}
       {loading && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.08] overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 ease-out"
               style={{ width: `${barPct}%` }}
             />
           </div>
-          <div className="flex items-start justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-1.5 min-w-0">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500 flex-shrink-0" />
               <span className="truncate">
-                {progress?.phase === 'saving'
-                  ? 'Saving to Google Sheets…'
-                  : progress
-                    ? `${progress.phase === 'scraping' ? 'Scraping emails' : 'Searching'} ${progress.index + 1}/${progress.total}: ${progress.keyword}`
-                    : 'Starting…'}
+                {progress
+                  ? `${progress.phase === 'scraping' ? 'Scraping emails for' : 'Searching'} ${progress.index + 1}/${progress.total}: ${progress.keyword}`
+                  : 'Starting search…'}
               </span>
             </div>
             <div className="flex items-center gap-1 tabular font-medium flex-shrink-0">
-              <Clock className="w-3 h-3" />
-              <span>{elapsed}s elapsed</span>
+              <Clock className="w-3 h-3" />{elapsed}s
             </div>
           </div>
-          {progress && progress.phase !== 'saving' && (
+          {progress && (
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-500 dark:text-slate-400">
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{progress.totalSoFar}</span> leads found so far
+                <span className="font-semibold text-slate-700 dark:text-slate-200">{progress.totalSoFar}</span> leads found
               </span>
               {progress.etaMs > 0 && (
-                <span className="text-slate-400 dark:text-slate-500">~{fmtTime(progress.etaMs)} remaining</span>
+                <span className="text-slate-400 dark:text-slate-500">~{fmtTime(progress.etaMs)} left</span>
               )}
             </div>
           )}
         </div>
       )}
 
-      {/* Generate button */}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:from-indigo-700 active:to-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-500/20 text-sm"
-      >
-        {loading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Generating…
-          </>
-        ) : (
-          <>
-            <Zap className="w-4 h-4" />
-            Generate Leads
-          </>
-        )}
-      </button>
-
+      {/* Generate / disabled when paused */}
+      {!paused && (
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:from-indigo-700 active:to-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-500/20 text-sm"
+        >
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
+            : <><Zap className="w-4 h-4" />Generate Leads</>}
+        </button>
+      )}
     </form>
   )
 }

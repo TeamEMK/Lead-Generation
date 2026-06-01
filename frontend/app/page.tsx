@@ -129,7 +129,7 @@ function LandingNavbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const navLinks = ['Features', 'How it Works', 'Testimonials', 'About', 'Contact']
+  const navLinks = ['Features', 'How it Works', 'Pricing', 'Testimonials', 'About', 'Contact']
 
   function scrollTo(id: string) {
     document.getElementById(id.toLowerCase().replace(/\s+/g, '-'))?.scrollIntoView({ behavior: 'smooth' })
@@ -139,15 +139,18 @@ function LandingNavbar() {
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${scrolled ? 'bg-white/95 dark:bg-[#0e1117]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.06] shadow-sm' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-6 lg:px-10 flex items-center justify-between h-16">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/25">
+        {/* Logo — scrolls to top */}
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="flex items-center gap-2.5 group"
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-slate-900 dark:text-white text-[17px] tracking-tight">
             Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Gen</span>
           </span>
-        </Link>
+        </button>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6">
@@ -463,6 +466,103 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
+      <section id="pricing" className="py-24 px-6 lg:px-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-4">Pricing</p>
+            <h2 className="text-4xl font-extrabold tracking-tight mb-4">Simple, token-based pricing</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+              Buy tokens once, use them anytime. 1 token = 1 lead saved. No subscriptions, no surprises.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              { name: 'Starter', price: 3000, tokens: 2400, perToken: '₹1.25', popular: false, color: 'slate' },
+              { name: 'Growth',  price: 5000, tokens: 5000, perToken: '₹1.00', popular: true,  color: 'indigo' },
+              { name: 'Scale',   price: 10000, tokens: 13500, perToken: '₹0.75', popular: false, color: 'slate' },
+            ].map(plan => (
+              <div key={plan.name} className={`relative rounded-2xl border p-7 flex flex-col gap-5 ${
+                plan.popular
+                  ? 'border-indigo-400 dark:border-indigo-500/60 bg-indigo-50 dark:bg-indigo-500/10 shadow-xl shadow-indigo-500/10 scale-[1.03]'
+                  : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02]'
+              }`}>
+                {plan.popular && (
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[11px] font-bold bg-indigo-600 text-white tracking-wider shadow-md">
+                    MOST POPULAR
+                  </span>
+                )}
+                <div>
+                  <p className={`text-sm font-bold uppercase tracking-widest mb-2 ${plan.popular ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                    {plan.name}
+                  </p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-extrabold text-slate-900 dark:text-white">₹{plan.price.toLocaleString()}</span>
+                    <span className="text-slate-400 dark:text-slate-500 text-sm mb-1">one-time</span>
+                  </div>
+                </div>
+
+                <div className={`rounded-xl p-3 text-center ${plan.popular ? 'bg-indigo-100 dark:bg-indigo-500/20' : 'bg-slate-100 dark:bg-white/[0.05]'}`}>
+                  <p className={`text-2xl font-extrabold ${plan.popular ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                    {plan.tokens.toLocaleString()} tokens
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{plan.perToken} per token</p>
+                </div>
+
+                <ul className="space-y-2.5 flex-1">
+                  {[
+                    `${plan.tokens.toLocaleString()} leads saved`,
+                    'Unused tokens expire with plan',
+                    'Smart deduplication',
+                    'Analytics dashboard',
+                    'Email scraping',
+                  ].map(f => (
+                    <li key={f} className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-400">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/signup"
+                  className={`w-full py-3 rounded-xl text-sm font-bold text-center transition-all ${
+                    plan.popular
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-500/25'
+                      : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100'
+                  }`}
+                >
+                  Get started
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          {/* Policy notes */}
+          <div className="mt-10 max-w-2xl mx-auto space-y-3">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+              <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠</span>
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                <span className="font-semibold">Tokens don't carry forward.</span> When your plan ends, any unused tokens are forfeited — nothing rolls over to the next plan.
+              </p>
+            </div>
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20">
+              <span className="text-indigo-500 mt-0.5 flex-shrink-0">🎁</span>
+              <p className="text-sm text-indigo-800 dark:text-indigo-300">
+                <span className="font-semibold">New accounts start with 30 free tokens.</span> Not ready to buy a plan yet? You get 30 tokens free to try it out. Once they're gone, you'll need to pick a plan to keep generating.
+              </p>
+            </div>
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+              <span className="text-emerald-500 mt-0.5 flex-shrink-0">✓</span>
+              <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                <span className="font-semibold">Duplicate leads never cost a token.</span> If a lead already exists in your account, it's skipped automatically — you're only charged for genuinely new leads.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ── */}
       <section className="py-24 px-6 lg:px-10 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -577,14 +677,17 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="border-t border-slate-100 dark:border-white/[0.06] py-10 px-6 lg:px-10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2.5 group"
+          >
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <Zap className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-bold text-slate-900 dark:text-white text-sm">
               Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Gen</span>
             </span>
-          </div>
+          </button>
           <p className="text-xs text-slate-400 dark:text-slate-600 text-center">
             © {new Date().getFullYear()} LeadGen. All rights reserved.
           </p>

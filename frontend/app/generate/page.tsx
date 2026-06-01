@@ -1,12 +1,15 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
-  Zap, Sparkles, Search, MapPin, Database,
-  CheckCircle2, Lightbulb, ArrowRight, Download,
+  Zap, Sparkles, Search, Database,
+  CheckCircle2, Lightbulb, ArrowRight, Download, Coins,
 } from 'lucide-react'
+import Link from 'next/link'
 import GeneratorForm from '../../components/GeneratorForm'
 import LeadsTable from '../../components/LeadsTable'
 import { useGeneration } from '../../context/GenerationContext'
+import { fetchTokenBalance } from '../../lib/api'
 import type { Lead } from '../../lib/api'
 
 function downloadCSV(leads: Lead[]) {
@@ -27,87 +30,87 @@ function downloadCSV(leads: Lead[]) {
 }
 
 const HOW_IT_WORKS = [
-  {
-    step: '01',
-    icon: Search,
-    title: 'Enter keywords',
-    desc: 'Type business categories you want to target — one per line or comma-separated.',
-    color: 'indigo',
-  },
-  {
-    step: '02',
-    icon: MapPin,
-    title: 'Set a location',
-    desc: 'Add a city or region to get local results. Leave blank for broader searches.',
-    color: 'violet',
-  },
-  {
-    step: '03',
-    icon: Database,
-    title: 'Auto-saved to sheet',
-    desc: 'Leads are fetched from Google Maps and saved instantly — duplicates are skipped.',
-    color: 'emerald',
-  },
+  { step: '01', icon: Search,   title: 'Enter keywords', desc: 'Type business categories you want to target — one per line or comma-separated.', color: 'indigo' },
+  { step: '02', icon: Search,   title: 'We search Maps',  desc: 'Our engine fetches every result from Google Maps for each keyword.', color: 'violet' },
+  { step: '03', icon: Database, title: 'Auto-saved',      desc: 'Leads save instantly to your database. Duplicates are skipped automatically.', color: 'emerald' },
 ]
 
 const TIPS = [
   'Use simple category names like "hotel" or "hospital" — not full sentences',
-  'Add a specific city in Location for higher-quality, local leads',
-  'Run the same keywords across different cities to scale up',
-  'Leads with a website are the easiest to find contact info for',
-  'Use the Keyword column in Leads to filter by campaign batch',
+  'Add a city to your keyword (e.g. "dentist Mumbai") for local results',
+  'Run the same keywords across different cities to scale up quickly',
+  'Leads with a website are easiest to find contact info for',
 ]
 
 export default function GeneratePage() {
-  const { leads } = useGeneration()
+  const { leads, result } = useGeneration()
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetchTokenBalance().then(setTokenBalance).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (result?.tokenBalance !== undefined) setTokenBalance(result.tokenBalance)
+  }, [result])
 
   return (
-    <div className="flex flex-col gap-6 h-[calc(100vh-4rem)]">
-      {/* Page header */}
-      <div className="flex-shrink-0">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-4 h-4 text-indigo-500" />
-          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">Generator</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Generator</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Generate Leads</h1>
+          <p className="text-xs sm:text-sm text-slate-400 dark:text-slate-500 mt-0.5 hidden sm:block">
+            Search Google Maps by keyword — leads save automatically to your database
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Generate Leads</h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-          Search Google Maps by keyword — results save automatically to your sheet
-        </p>
+
+        <Link href="/subscription" className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${
+          tokenBalance !== null && tokenBalance < 100
+            ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+            : 'border-indigo-100 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
+        } hover:opacity-80`}>
+          <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span>{tokenBalance === null ? '…' : tokenBalance.toLocaleString()}</span>
+          <span className="hidden sm:inline text-current opacity-60">tokens</span>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 flex-1 min-h-0">
-        {/* Form card — fixed, no scroll */}
-        <div className="overflow-y-auto">
-          <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
-            {/* Card header */}
-            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/[0.04]">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-500/25">
-                  <Zap className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Lead Generator</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">Powered by Google Maps</p>
-                </div>
-              </div>
+      {/* Two-column on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 lg:gap-6">
+
+        {/* Form card */}
+        <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-white/[0.04]">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-500/25 flex-shrink-0">
+              <Zap className="w-4 h-4 text-white" />
             </div>
-            <div className="p-6">
-              <GeneratorForm />
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Lead Generator</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Powered by Google Maps</p>
             </div>
+          </div>
+          <div className="p-5">
+            <GeneratorForm />
           </div>
         </div>
 
-        {/* Right panel — independently scrollable */}
-        <div className="overflow-y-auto pr-1">
+        {/* Right panel */}
+        <div className="min-w-0 overflow-hidden">
           {leads.length > 0 ? (
-            <div className="relative">
-              <div className="absolute top-3.5 right-4 z-10 flex items-center gap-2">
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">
-                  {leads.length} leads
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {leads.length} leads found
                 </span>
                 <button
                   onClick={() => downloadCSV(leads)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm shadow-indigo-500/25"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-sm shadow-indigo-500/25"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download CSV
@@ -118,31 +121,31 @@ export default function GeneratePage() {
               </div>
             </div>
           ) : (
-          <div className="space-y-6">
+            <div className="space-y-4">
               {/* How it works */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-slate-100 dark:border-white/[0.04]">
+                <div className="px-5 py-4 border-b border-slate-100 dark:border-white/[0.04]">
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">How it works</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Three steps to your first batch of leads</p>
                 </div>
                 <div className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {HOW_IT_WORKS.map(({ step, icon: Icon, title, desc, color }) => (
-                    <div key={step} className="flex items-start gap-5 px-6 py-5">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    <div key={step} className="flex items-start gap-4 px-5 py-4">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                         color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500'
                         : color === 'violet' ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-500'
                         : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'
                       }`}>
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold tracking-widest text-slate-300 dark:text-slate-600">{step}</span>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[9px] font-bold tracking-widest text-slate-300 dark:text-slate-600">{step}</span>
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</p>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-slate-200 dark:text-slate-700 flex-shrink-0 mt-3" />
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-200 dark:text-slate-700 flex-shrink-0 mt-1" />
                     </div>
                   ))}
                 </div>
@@ -150,17 +153,15 @@ export default function GeneratePage() {
 
               {/* Pro tips */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-slate-100 dark:border-white/[0.04]">
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4 text-amber-500" />
-                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Pro tips</h2>
-                  </div>
+                <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 dark:border-white/[0.04]">
+                  <Lightbulb className="w-4 h-4 text-amber-500" />
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Pro tips</h2>
                 </div>
                 <ul className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {TIPS.map((tip, i) => (
-                    <li key={i} className="flex items-start gap-3 px-6 py-4">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{tip}</p>
+                    <li key={i} className="flex items-start gap-3 px-5 py-3.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{tip}</p>
                     </li>
                   ))}
                 </ul>
