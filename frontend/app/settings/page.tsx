@@ -85,7 +85,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
@@ -105,7 +105,7 @@ export default function SettingsPage() {
           {/* Profile form */}
           <form onSubmit={handleSave} className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm overflow-hidden">
             {/* Section header */}
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-white/[0.04]">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-white/[0.04]">
               <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center">
                 <User className="w-4 h-4 text-brand-500" />
               </div>
@@ -115,7 +115,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5">
               {saveError && (
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-sm">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />{saveError}
@@ -210,7 +210,7 @@ export default function SettingsPage() {
 
           {/* Danger zone */}
           <div className="rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-white dark:bg-[#141c32] shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-rose-100 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/5">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-rose-100 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/5">
               <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               </div>

@@ -24,32 +24,34 @@ const navItems = [
 
 function SidebarContent({
   expanded, pathname, generating, tokenBalance, isDark, mounted,
-  pinned, togglePin, handleLogout, toggleTheme, user, onNavClick,
+  pinned, togglePin, handleLogout, toggleTheme, user, onNavClick, showLogo = true,
 }: any) {
   return (
     <div className="flex flex-col h-full">
       {/* Gradient accent top line */}
       <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-gradient-to-r from-brand-500 via-brand-500 to-brand-500" />
 
-      {/* Logo */}
-      <div className="flex items-center h-14 px-3 flex-shrink-0 border-b border-slate-100 dark:border-white/[0.05]">
-        <Link href="/" onClick={onNavClick} className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30 flex-shrink-0">
-            <Zap className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className={`font-bold text-slate-900 dark:text-white text-sm tracking-tight whitespace-nowrap transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
-            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-          </span>
-        </Link>
-        {expanded && (
-          <button
-            onClick={togglePin}
-            className="ml-auto p-1.5 rounded-lg text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-all flex-shrink-0"
-          >
-            {pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-          </button>
-        )}
-      </div>
+      {/* Logo — hidden on mobile drawer (drawer has its own header) */}
+      {showLogo && (
+        <div className="flex items-center h-14 px-3 flex-shrink-0 border-b border-slate-100 dark:border-white/[0.05]">
+          <Link href="/" onClick={onNavClick} className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30 flex-shrink-0">
+              <Zap className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className={`font-bold text-slate-900 dark:text-white text-sm tracking-tight whitespace-nowrap transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
+              GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
+            </span>
+          </Link>
+          {expanded && (
+            <button
+              onClick={togglePin}
+              className="ml-auto p-1.5 rounded-lg text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-all flex-shrink-0"
+            >
+              {pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
@@ -252,7 +254,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <SidebarContent {...sharedProps} expanded onNavClick={() => setMobileOpen(false)} />
+            <SidebarContent {...sharedProps} expanded showLogo={false} onNavClick={() => setMobileOpen(false)} />
           </div>
         </div>
       )}
