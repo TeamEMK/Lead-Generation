@@ -28,16 +28,16 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Gradient accent top line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-500" />
+      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-gradient-to-r from-brand-500 via-brand-500 to-brand-500" />
 
       {/* Logo */}
       <div className="flex items-center h-14 px-3 flex-shrink-0 border-b border-slate-100 dark:border-white/[0.05]">
         <Link href="/" onClick={onNavClick} className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30 flex-shrink-0">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30 flex-shrink-0">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
           <span className={`font-bold text-slate-900 dark:text-white text-sm tracking-tight whitespace-nowrap transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Gen</span>
+            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
           </span>
         </Link>
         {expanded && (
@@ -62,14 +62,14 @@ function SidebarContent({
                 onClick={onNavClick}
                 className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                   active
-                    ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 shadow-sm'
                     : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
                 <div className="relative flex-shrink-0 w-[18px] h-[18px] flex items-center justify-center">
-                  <Icon className={`w-[18px] h-[18px] ${active ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
+                  <Icon className={`w-[18px] h-[18px] ${active ? 'text-brand-600 dark:text-brand-400' : ''}`} />
                   {isGenerate && generating && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-[#0e1117]" />
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-[#0d1228]" />
                   )}
                 </div>
                 <span className={`whitespace-nowrap transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
@@ -80,7 +80,7 @@ function SidebarContent({
                 )}
               </Link>
               {!expanded && (
-                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1e2433] text-white text-xs rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
+                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1c2540] text-white text-xs rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
                   {label}{isGenerate && generating && ' · running…'}
                 </div>
               )}
@@ -91,29 +91,6 @@ function SidebarContent({
 
       {/* Footer */}
       <div className="p-2 border-t border-slate-100 dark:border-white/[0.05] space-y-0.5 flex-shrink-0">
-        {/* Token balance */}
-        <div className="relative group/tokens">
-          <Link
-            href="/subscription"
-            onClick={onNavClick}
-            className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium transition-all ${
-              tokenBalance !== null && tokenBalance < 100
-                ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10'
-                : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
-            }`}
-          >
-            <Coins className="w-[18px] h-[18px] flex-shrink-0" />
-            <span className={`whitespace-nowrap font-semibold tabular transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
-              {tokenBalance === null ? '—' : tokenBalance.toLocaleString()} tokens
-            </span>
-          </Link>
-          {!expanded && (
-            <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1e2433] text-white text-xs rounded-lg opacity-0 group-hover/tokens:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
-              {tokenBalance === null ? 'Tokens: loading' : `${tokenBalance.toLocaleString()} tokens`}
-            </div>
-          )}
-        </div>
-
         {/* Theme */}
         <div className="relative group/theme">
           <button
@@ -128,7 +105,7 @@ function SidebarContent({
             </span>
           </button>
           {!expanded && (
-            <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1e2433] text-white text-xs rounded-lg opacity-0 group-hover/theme:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
+            <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1c2540] text-white text-xs rounded-lg opacity-0 group-hover/theme:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
               {mounted && isDark ? 'Light mode' : 'Dark mode'}
             </div>
           )}
@@ -150,7 +127,7 @@ function SidebarContent({
               </div>
             </button>
             {!expanded && (
-              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1e2433] text-white text-xs rounded-lg opacity-0 group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-slate-900 dark:bg-[#1c2540] text-white text-xs rounded-lg opacity-0 group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
                 {user.name} · Logout
               </div>
             )}
@@ -224,7 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Mobile top bar ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4
-        bg-white/95 dark:bg-[#0e1117]/95 backdrop-blur-md
+        bg-white/95 dark:bg-[#0d1228]/95 backdrop-blur-md
         border-b border-slate-200 dark:border-white/[0.06]">
         <button
           onClick={() => setMobileOpen(true)}
@@ -234,18 +211,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </button>
 
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Gen</span>
+            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
           </span>
         </Link>
 
         <Link href="/subscription" className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
           tokenBalance !== null && tokenBalance < 100
             ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
-            : 'border-indigo-100 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
+            : 'border-brand-100 dark:border-brand-500/20 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400'
         }`}>
           <Coins className="w-3.5 h-3.5" />
           {tokenBalance === null ? '…' : tokenBalance.toLocaleString()}
@@ -258,16 +235,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <div
             ref={drawerRef}
-            className="relative w-64 h-full bg-white dark:bg-[#0e1117] border-r border-slate-200 dark:border-white/[0.06] shadow-2xl flex flex-col overflow-hidden"
+            className="relative w-64 h-full bg-white dark:bg-[#0d1228] border-r border-slate-200 dark:border-white/[0.06] shadow-2xl flex flex-col overflow-hidden"
           >
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-500" />
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-500 via-brand-500 to-brand-500" />
             <div className="flex items-center justify-between h-14 px-4 border-b border-slate-100 dark:border-white/[0.05] flex-shrink-0">
               <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30">
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30">
                   <Zap className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-                  Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Gen</span>
+                  Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
                 </span>
               </Link>
               <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
@@ -284,7 +261,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className={`hidden lg:flex fixed left-2 top-2 h-[calc(100vh-1rem)] z-40 flex-col
-          bg-white dark:bg-[#0e1117]
+          bg-white dark:bg-[#0d1228]
           border border-slate-200 dark:border-white/[0.06]
           rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/20
           transition-all duration-200 ease-in-out overflow-hidden
@@ -295,8 +272,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Main content ── */}
       <div className={`transition-all duration-200 ${expanded ? 'lg:ml-[232px]' : 'lg:ml-[68px]'}`}>
-        <main className="pt-14 lg:pt-0 min-h-screen p-3 sm:p-4 lg:p-5">
-          <div className="bg-white dark:bg-[#0e1117] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm min-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-2.5rem)] p-4 sm:p-6 lg:p-8">
+        <main className="pt-14 lg:pt-0 min-h-screen p-3 sm:p-4 lg:p-5 flex flex-col">
+          <div className="bg-white dark:bg-[#0d1228] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm flex-1 flex flex-col p-4 sm:p-6 lg:p-8">
             {children}
           </div>
         </main>

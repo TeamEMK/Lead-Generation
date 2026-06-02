@@ -40,6 +40,9 @@ const TIPS = [
   'Add a city to your keyword (e.g. "dentist Mumbai") for local results',
   'Run the same keywords across different cities to scale up quickly',
   'Leads with a website are easiest to find contact info for',
+  'Comma-separate cities to search multiple locations in one go',
+  'Enable email scraping only when you need contacts — it adds time per lead',
+  'Export to CSV after each run so you always have a fresh backup',
 ]
 
 export default function GeneratePage() {
@@ -55,12 +58,12 @@ export default function GeneratePage() {
   }, [result])
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col flex-1 gap-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <Sparkles className="w-3.5 h-3.5 text-brand-500" />
             <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Generator</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Generate Leads</h1>
@@ -72,7 +75,7 @@ export default function GeneratePage() {
         <Link href="/subscription" className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${
           tokenBalance !== null && tokenBalance < 100
             ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
-            : 'border-indigo-100 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
+            : 'border-brand-100 dark:border-brand-500/20 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400'
         } hover:opacity-80`}>
           <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>{tokenBalance === null ? '…' : tokenBalance.toLocaleString()}</span>
@@ -81,12 +84,12 @@ export default function GeneratePage() {
       </div>
 
       {/* Two-column on desktop, stacked on mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 lg:gap-6">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 lg:gap-6 lg:items-stretch">
 
         {/* Form card */}
-        <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-white/[0.04]">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-500/25 flex-shrink-0">
+        <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm overflow-hidden flex flex-col">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-white/[0.04] flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-sm shadow-brand-500/25 flex-shrink-0">
               <Zap className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -94,13 +97,13 @@ export default function GeneratePage() {
               <p className="text-xs text-slate-400 dark:text-slate-500">Powered by Google Maps</p>
             </div>
           </div>
-          <div className="p-5">
+          <div className="p-5 flex-1 flex flex-col">
             <GeneratorForm />
           </div>
         </div>
 
         {/* Right panel */}
-        <div className="min-w-0 overflow-hidden">
+        <div className="min-w-0 overflow-hidden flex flex-col">
           {leads.length > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -110,30 +113,30 @@ export default function GeneratePage() {
                 </span>
                 <button
                   onClick={() => downloadCSV(leads)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-sm shadow-indigo-500/25"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-500 text-white transition-colors shadow-sm shadow-brand-500/25"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download CSV
                 </button>
               </div>
-              <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm p-4">
+              <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm p-4">
                 <LeadsTable leads={leads} />
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col flex-1 gap-4">
               {/* How it works */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
+              <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 dark:border-white/[0.04]">
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">How it works</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Three steps to your first batch of leads</p>
                 </div>
-                <div className="divide-y divide-slate-100 dark:divide-white/[0.04]">
+                <div className="flex flex-col flex-1 divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {HOW_IT_WORKS.map(({ step, icon: Icon, title, desc, color }) => (
-                    <div key={step} className="flex items-start gap-4 px-5 py-4">
+                    <div key={step} className="flex-1 flex items-center gap-4 px-5 py-4">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500'
-                        : color === 'violet' ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-500'
+                        color === 'indigo' ? 'bg-brand-50 dark:bg-brand-500/10 text-brand-500'
+                        : color === 'violet' ? 'bg-navy-50 dark:bg-navy-500/10 text-navy-500'
                         : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'
                       }`}>
                         <Icon className="w-4 h-4" />
@@ -152,14 +155,14 @@ export default function GeneratePage() {
               </div>
 
               {/* Pro tips */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
+              <div className="flex-1 rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm overflow-hidden flex flex-col">
                 <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 dark:border-white/[0.04]">
                   <Lightbulb className="w-4 h-4 text-amber-500" />
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Pro tips</h2>
                 </div>
-                <ul className="divide-y divide-slate-100 dark:divide-white/[0.04]">
+                <ul className="flex flex-col flex-1 divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {TIPS.map((tip, i) => (
-                    <li key={i} className="flex items-start gap-3 px-5 py-3.5">
+                    <li key={i} className="flex-1 flex items-center gap-3 px-5 py-3.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
                       <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{tip}</p>
                     </li>

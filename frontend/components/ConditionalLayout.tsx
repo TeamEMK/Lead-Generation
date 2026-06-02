@@ -26,8 +26,8 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
 
   if (loading && isProtected) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0e1117]">
-        <div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0d1228]">
+        <div className="w-6 h-6 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
       </div>
     )
   }

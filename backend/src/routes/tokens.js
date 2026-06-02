@@ -39,7 +39,7 @@ router.get('/subscription', async (req, res) => {
     const user = userRows[0];
 
     const { rows: subs } = await pool.query(
-      `SELECT s.id, s.tokens_purchased, s.amount_paid_inr, s.status, s.created_at,
+      `SELECT s.id, s.tokens_purchased, s.amount_paid_inr, s.status, s.created_at, s.invoice_number,
               p.name AS plan_name, p.price_inr, p.tokens AS plan_tokens
        FROM subscriptions s
        JOIN plans p ON p.id = s.plan_id
@@ -95,13 +95,26 @@ router.post('/purchase', async (req, res) => {
     if (!planRows.length) return res.status(404).json({ error: 'Plan not found' });
     const plan = planRows[0];
 
+    // Generate invoice number: JM/YYYYMMDDNNN (NNN = monthly counter)
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const { rows: cntRows } = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM subscriptions
+       WHERE EXTRACT(YEAR FROM created_at) = $1 AND EXTRACT(MONTH FROM created_at) = $2`,
+      [yyyy, parseInt(mm)]
+    );
+    const counter = String(parseInt(cntRows[0].cnt) + 1).padStart(3, '0');
+    const invoiceNumber = `JM/${yyyy}${mm}${dd}${counter}`;
+
     await pool.query(
       'UPDATE users SET tokens_balance = tokens_balance + $1, active_plan_id = $2 WHERE id = $3',
       [plan.tokens, plan.id, req.user.id]
     );
     await pool.query(
-      'INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr) VALUES ($1, $2, $3, $4)',
-      [req.user.id, plan.id, plan.tokens, plan.price_inr]
+      'INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number) VALUES ($1, $2, $3, $4, $5)',
+      [req.user.id, plan.id, plan.tokens, plan.price_inr, invoiceNumber]
     );
     await pool.query(
       'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
@@ -109,7 +122,7 @@ router.post('/purchase', async (req, res) => {
     );
 
     const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
-    res.json({ success: true, balance: balRows[0].tokens_balance, tokens_added: plan.tokens, plan });
+    res.json({ success: true, balance: balRows[0].tokens_balance, tokens_added: plan.tokens, plan, invoiceNumber });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

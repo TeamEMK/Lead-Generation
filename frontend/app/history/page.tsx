@@ -46,9 +46,9 @@ function RunLeadsTable({ leads }: { leads: Lead[] }) {
     <div className="overflow-auto max-h-[50vh]">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-slate-100 dark:bg-[#1a1f2e]">
+          <tr className="bg-slate-100 dark:bg-[#18213a]">
             {['Business Name', 'Keyword', 'Phone', 'Website', 'Email', 'Address'].map(h => (
-              <th key={h} className="sticky top-0 z-10 bg-slate-100 dark:bg-[#1a1f2e] text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+              <th key={h} className="sticky top-0 z-10 bg-slate-100 dark:bg-[#18213a] text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
                 {h}
               </th>
             ))}
@@ -62,28 +62,28 @@ function RunLeadsTable({ leads }: { leads: Lead[] }) {
               </td>
               <td className="px-4 py-2.5">
                 {lead.keyword
-                  ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 whitespace-nowrap">
+                  ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-100 dark:bg-navy-900/30 text-navy-700 dark:text-navy-400 whitespace-nowrap">
                       <Tag className="w-2.5 h-2.5" />{lead.keyword}
                     </span>
                   : <span className="text-slate-400 dark:text-slate-500">—</span>}
               </td>
               <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                 {lead.phone
-                  ? <a href={`tel:${lead.phone}`} className="flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  ? <a href={`tel:${lead.phone}`} className="flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400">
                       <Phone className="w-3 h-3 flex-shrink-0" />{lead.phone}
                     </a> : '—'}
               </td>
               <td className="px-4 py-2.5 max-w-[160px]">
                 {lead.website
                   ? <a href={lead.website} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:underline">
+                      className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400 hover:underline">
                       <Globe className="w-3 h-3 flex-shrink-0" />
                       <span className="truncate">{lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
                     </a> : '—'}
               </td>
               <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">
                 {lead.email
-                  ? <a href={`mailto:${lead.email}`} className="flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  ? <a href={`mailto:${lead.email}`} className="flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400">
                       <Mail className="w-3 h-3 flex-shrink-0" />{lead.email}
                     </a>
                   : <span className="text-slate-400 dark:text-slate-500">—</span>}
@@ -147,7 +147,7 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
         <td className="px-5 py-3.5">
           <div className="flex flex-wrap gap-1.5">
             {run.keywords.map((kw, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 border border-violet-100 dark:border-violet-500/20">
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-50 dark:bg-navy-500/10 text-navy-700 dark:text-navy-400 border border-navy-100 dark:border-navy-500/20">
                 <Tag className="w-2.5 h-2.5" />{kw}
               </span>
             ))}
@@ -155,7 +155,7 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
         </td>
         <td className="px-5 py-3.5 text-right">
           <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-            <Hash className="w-3.5 h-3.5 text-indigo-500" />
+            <Hash className="w-3.5 h-3.5 text-brand-500" />
             {run.total_found.toLocaleString()}
           </span>
         </td>
@@ -164,7 +164,7 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
             {leads && leads.length > 0 && (
               <button
                 onClick={e => { e.stopPropagation(); downloadCSV(leads, run.id) }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors border border-indigo-100 dark:border-indigo-500/20"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors border border-brand-100 dark:border-brand-500/20"
               >
                 <Download className="w-3 h-3" /> CSV
               </button>
@@ -180,10 +180,10 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
       {expanded && (
         <tr>
           <td colSpan={5} className="px-0 py-0">
-            <div className="border-t border-b border-indigo-100 dark:border-indigo-500/20 bg-slate-50/80 dark:bg-white/[0.02]">
+            <div className="border-t border-b border-brand-100 dark:border-brand-500/20 bg-slate-50/80 dark:bg-white/[0.02]">
               {loading ? (
                 <div className="flex items-center justify-center py-8 gap-2 text-slate-400 dark:text-slate-500">
-                  <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                  <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
                   <span className="text-sm">Loading leads…</span>
                 </div>
               ) : error ? (
@@ -221,7 +221,7 @@ export default function HistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <History className="w-4 h-4 text-indigo-500" />
+            <History className="w-4 h-4 text-brand-500" />
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">History</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Generation History</h1>
@@ -239,10 +239,10 @@ export default function HistoryPage() {
         <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-sm">{error}</div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#161b27] shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <RefreshCw className="w-6 h-6 animate-spin text-indigo-500" />
+            <RefreshCw className="w-6 h-6 animate-spin text-brand-500" />
             <p className="text-sm text-slate-400 dark:text-slate-500">Loading history…</p>
           </div>
         ) : runs.length === 0 ? (

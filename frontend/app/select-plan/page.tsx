@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Zap, CheckCircle2, Coins, Loader2, ArrowRight,
@@ -12,7 +12,16 @@ import { fetchPlans, purchasePlan, type Plan } from '../../lib/api'
 type Step = 'select' | 'pay'
 
 export default function SelectPlanPage() {
+  return (
+    <Suspense>
+      <SelectPlanContent />
+    </Suspense>
+  )
+}
+
+function SelectPlanContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
@@ -21,11 +30,19 @@ export default function SelectPlanPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const planIdParam = searchParams.get('planId')
     fetchPlans()
-      .then(p => { setPlans(p); setSelectedPlan(p.find(x => x.popular) ?? p[1] ?? p[0]) })
+      .then(p => {
+        setPlans(p)
+        const preselected = planIdParam
+          ? p.find(x => x.id === Number(planIdParam))
+          : null
+        setSelectedPlan(preselected ?? p.find(x => x.popular) ?? p[1] ?? p[0])
+        if (preselected) setStep('pay')
+      })
       .catch(() => setError('Failed to load plans'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [searchParams])
 
   async function handlePay() {
     if (!selectedPlan) return
@@ -41,32 +58,62 @@ export default function SelectPlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0e1117] flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0d1228] flex flex-col">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#0e1117]">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#0d1228]">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/25">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/25">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Gen</span>
+            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
           </span>
         </Link>
         {/* Steps */}
-        <div className="flex items-center gap-2 text-xs font-medium">
-          <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Account created
-          </span>
-          <span className="text-slate-300 dark:text-slate-600">→</span>
-          <span className={`flex items-center gap-1.5 ${step === 'select' ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-            {step !== 'select' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <span className="w-3.5 h-3.5 rounded-full border-2 border-current flex items-center justify-center text-[9px]">2</span>}
-            Choose plan
-          </span>
-          <span className="text-slate-300 dark:text-slate-600">→</span>
-          <span className={`flex items-center gap-1.5 ${step === 'pay' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}>
-            <span className="w-3.5 h-3.5 rounded-full border-2 border-current flex items-center justify-center text-[9px]">3</span>
-            Payment
-          </span>
+        <div className="flex items-center gap-1">
+          {/* Step 1 — Account */}
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="hidden sm:block text-xs font-semibold text-emerald-600 dark:text-emerald-400">Account created</span>
+          </div>
+          {/* Connector */}
+          <div className="w-8 sm:w-12 h-[2px] bg-emerald-200 dark:bg-emerald-500/30 mx-1 rounded-full" />
+          {/* Step 2 — Choose plan */}
+          <div className="flex items-center gap-2">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold ${
+              step !== 'select'
+                ? 'bg-emerald-500'
+                : 'bg-brand-500'
+            }`}>
+              {step !== 'select'
+                ? <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                : <span className="text-white">2</span>
+              }
+            </div>
+            <span className={`hidden sm:block text-xs font-semibold ${
+              step === 'select' ? 'text-brand-600 dark:text-brand-400'
+              : 'text-emerald-600 dark:text-emerald-400'
+            }`}>Choose plan</span>
+          </div>
+          {/* Connector */}
+          <div className={`w-8 sm:w-12 h-[2px] mx-1 rounded-full transition-colors ${
+            step === 'pay' ? 'bg-brand-300 dark:bg-brand-500/40' : 'bg-slate-200 dark:bg-white/[0.08]'
+          }`} />
+          {/* Step 3 — Payment */}
+          <div className="flex items-center gap-2">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold transition-colors ${
+              step === 'pay'
+                ? 'bg-brand-500'
+                : 'bg-slate-200 dark:bg-white/[0.1]'
+            }`}>
+              <span className={step === 'pay' ? 'text-white' : 'text-slate-400 dark:text-slate-500'}>3</span>
+            </div>
+            <span className={`hidden sm:block text-xs font-semibold ${
+              step === 'pay' ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'
+            }`}>Payment</span>
+          </div>
         </div>
         <div className="w-28" />
       </header>
@@ -91,7 +138,7 @@ export default function SelectPlanPage() {
 
             {loading ? (
               <div className="flex items-center justify-center h-48">
-                <Loader2 className="w-7 h-7 animate-spin text-indigo-500" />
+                <Loader2 className="w-7 h-7 animate-spin text-brand-500" />
               </div>
             ) : (
               <>
@@ -104,22 +151,22 @@ export default function SelectPlanPage() {
                         onClick={() => setSelectedPlan(plan)}
                         className={`relative rounded-2xl border p-6 flex flex-col gap-4 text-left transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 shadow-lg shadow-indigo-500/10 ring-2 ring-indigo-500/30'
+                            ? 'border-brand-500 dark:border-brand-400 bg-brand-50 dark:bg-brand-500/10 shadow-lg shadow-brand-500/10 ring-2 ring-brand-500/30'
                             : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] hover:border-slate-300 dark:hover:border-white/[0.14]'
                         }`}
                       >
                         {plan.popular && (
-                          <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white tracking-wider">
+                          <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold bg-brand-600 text-white tracking-wider">
                             MOST POPULAR
                           </span>
                         )}
                         {isSelected && (
-                          <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
+                          <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
                             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                           </span>
                         )}
                         <div>
-                          <p className={`text-xs font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                          <p className={`text-xs font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'}`}>
                             {plan.name}
                           </p>
                           <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
@@ -127,8 +174,8 @@ export default function SelectPlanPage() {
                           </p>
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">one-time</p>
                         </div>
-                        <div className={`rounded-xl p-3 text-center ${isSelected ? 'bg-indigo-100 dark:bg-indigo-500/20' : 'bg-slate-100 dark:bg-white/[0.05]'}`}>
-                          <p className={`text-xl font-extrabold ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                        <div className={`rounded-xl p-3 text-center ${isSelected ? 'bg-brand-100 dark:bg-brand-500/20' : 'bg-slate-100 dark:bg-white/[0.05]'}`}>
+                          <p className={`text-xl font-extrabold ${isSelected ? 'text-brand-600 dark:text-brand-400' : 'text-slate-700 dark:text-slate-200'}`}>
                             {plan.tokens.toLocaleString()} tokens
                           </p>
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">₹{plan.price_per_token}/token</p>
@@ -149,7 +196,7 @@ export default function SelectPlanPage() {
                   <button
                     onClick={() => setStep('pay')}
                     disabled={!selectedPlan}
-                    className="flex items-center gap-2 px-10 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base shadow-xl shadow-indigo-500/25 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-10 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-base shadow-xl shadow-brand-500/25 transition-all disabled:opacity-50"
                   >
                     Continue with {selectedPlan?.name}
                     <ArrowRight className="w-4 h-4" />
@@ -174,12 +221,12 @@ export default function SelectPlanPage() {
             </div>
 
             {/* Order summary */}
-            <div className="bg-white dark:bg-[#161b27] rounded-2xl border border-slate-200 dark:border-white/[0.08] shadow-sm p-6 mb-4 space-y-4">
+            <div className="bg-white dark:bg-[#141c32] rounded-2xl border border-slate-200 dark:border-white/[0.08] shadow-sm p-6 mb-4 space-y-4">
               <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Order Summary</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-                    <Coins className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-500/20 flex items-center justify-center">
+                    <Coins className="w-5 h-5 text-brand-600 dark:text-brand-400" />
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900 dark:text-white text-sm">{selectedPlan?.name} Plan</p>
@@ -195,7 +242,7 @@ export default function SelectPlanPage() {
             </div>
 
             {/* Payment gateway placeholder */}
-            <div className="bg-white dark:bg-[#161b27] rounded-2xl border border-dashed border-slate-300 dark:border-white/[0.12] p-6 mb-4 text-center space-y-2">
+            <div className="bg-white dark:bg-[#141c32] rounded-2xl border border-dashed border-slate-300 dark:border-white/[0.12] p-6 mb-4 text-center space-y-2">
               <CreditCard className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Payment gateway will appear here</p>
               <p className="text-xs text-slate-400 dark:text-slate-500">Razorpay / Stripe integration coming soon</p>
@@ -210,7 +257,7 @@ export default function SelectPlanPage() {
             <button
               onClick={handlePay}
               disabled={paying}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm shadow-xl shadow-indigo-500/25 transition-all disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition-all disabled:opacity-60"
             >
               {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
               {paying ? 'Processing…' : `Confirm & Pay ₹${selectedPlan?.price_inr.toLocaleString()}`}

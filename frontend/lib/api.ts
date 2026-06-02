@@ -107,6 +107,7 @@ export interface Subscription {
     tokens_purchased: number
     amount_paid_inr: number
     status: string
+    invoice_number: string | null
     created_at: string
   }[]
   transactions: {

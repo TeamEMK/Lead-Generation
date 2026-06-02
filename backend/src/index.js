@@ -12,10 +12,13 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
-    if (origin === process.env.FRONTEND_URL) return cb(null, true);
+    if (!origin) return cb(null, true); // server-to-server
+    if (/^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true); // local dev
+    if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true); // prod
+    if (/\.vercel\.app$/.test(origin)) return cb(null, true); // Vercel preview deploys
     cb(new Error('Not allowed by CORS'));
   },
+  credentials: true,
 }));
 app.use(express.json());
 
@@ -109,9 +112,11 @@ async function initDb() {
       tokens_purchased INTEGER NOT NULL,
       amount_paid_inr INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
+      invoice_number TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS invoice_number TEXT`);
   // Token transaction log
   await pool.query(`
     CREATE TABLE IF NOT EXISTS token_transactions (

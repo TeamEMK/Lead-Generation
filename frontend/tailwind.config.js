@@ -12,12 +12,38 @@ module.exports = {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       colors: {
+        // e-marketing.io primary orange
+        brand: {
+          50:  '#fef7e8',
+          100: '#fdecc4',
+          200: '#fbd489',
+          300: '#f9bb4e',
+          400: '#f0a220',
+          500: '#E8951A',
+          600: '#c97c12',
+          700: '#a5620d',
+          800: '#854e0c',
+          900: '#6c3f0b',
+        },
+        // e-marketing.io dark navy
+        navy: {
+          50:  '#eef0f8',
+          100: '#dde1f1',
+          200: '#bbc3e3',
+          300: '#99a4d5',
+          400: '#7786c7',
+          500: '#2B3467',
+          600: '#252d59',
+          700: '#1e254a',
+          800: '#181d3c',
+          900: '#1A1F35',
+        },
         primary: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
+          50:  '#fef7e8',
+          100: '#fdecc4',
+          500: '#E8951A',
+          600: '#c97c12',
+          700: '#a5620d',
         },
       },
       animation: {

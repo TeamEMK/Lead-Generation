@@ -21,19 +21,19 @@ function PlanCard({ plan, onBuy, buying }: { plan: Plan; onBuy: () => void; buyi
   return (
     <div className={`relative rounded-xl border p-4 flex flex-col gap-3 ${
       plan.popular
-        ? 'border-indigo-400 dark:border-indigo-500/50 bg-indigo-50 dark:bg-indigo-500/10'
+        ? 'border-brand-400 dark:border-brand-500/50 bg-brand-50 dark:bg-brand-500/10'
         : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02]'
     }`}>
       {plan.popular && (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-600 text-white tracking-wider">
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-brand-600 text-white tracking-wider">
           BEST VALUE
         </span>
       )}
       <div>
-        <p className={`text-xs font-bold uppercase tracking-widest ${plan.popular ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-500'}`}>{plan.name}</p>
+        <p className={`text-xs font-bold uppercase tracking-widest ${plan.popular ? 'text-brand-500' : 'text-slate-400 dark:text-slate-500'}`}>{plan.name}</p>
         <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">₹{plan.price_inr.toLocaleString()}</p>
       </div>
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+      <div className="flex items-center gap-1.5 text-sm font-semibold text-brand-600 dark:text-brand-400">
         <Coins className="w-3.5 h-3.5" />{plan.tokens.toLocaleString()} tokens
       </div>
       <p className="text-xs text-slate-400 dark:text-slate-500">₹{plan.price_per_token}/token</p>
@@ -42,7 +42,7 @@ function PlanCard({ plan, onBuy, buying }: { plan: Plan; onBuy: () => void; buyi
         disabled={buying}
         className={`w-full py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 ${
           plan.popular
-            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20'
+            ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-500/20'
             : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100'
         }`}
       >
@@ -108,14 +108,14 @@ export default function GeneratorForm() {
   const canResume = paused && paused.remainingKeywords.length > 0 && purchasedBalance !== null && purchasedBalance > 0
 
   return (
-    <form id="generate-form" onSubmit={handleSubmit} className="space-y-5">
+    <form id="generate-form" onSubmit={handleSubmit} className="flex flex-col flex-1 gap-5">
 
       {/* Keywords */}
-      <div>
+      <div className="flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Keywords</label>
           {keywordCount > 0 ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-500/20">
               <Hash className="w-3 h-3" />{keywordCount} keyword{keywordCount > 1 ? 's' : ''}
             </span>
           ) : (
@@ -141,9 +141,8 @@ export default function GeneratorForm() {
             'car dealers in California',
             'IT companies in India',
           ].join('\n')}
-          rows={10}
           disabled={loading || !!paused}
-          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm font-mono resize-none transition-colors leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm font-mono resize-none transition-colors leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <div className="mt-2 space-y-1">
           <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -164,22 +163,22 @@ export default function GeneratorForm() {
           loading || paused ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         } ${
           scrapeEmails
-            ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30'
+            ? 'bg-brand-50 dark:bg-brand-500/10 border-brand-200 dark:border-brand-500/30'
             : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.12]'
         }`}
       >
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-          scrapeEmails ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+          scrapeEmails ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400'
             : 'bg-slate-100 dark:bg-white/[0.06] text-slate-400 dark:text-slate-500'
         }`}>
           <Mail className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className={`text-sm font-semibold ${scrapeEmails ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'}`}>
+            <p className={`text-sm font-semibold ${scrapeEmails ? 'text-brand-700 dark:text-brand-300' : 'text-slate-700 dark:text-slate-200'}`}>
               Scrape emails from websites
             </p>
-            <div className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${scrapeEmails ? 'bg-indigo-500' : 'bg-slate-200 dark:bg-white/[0.12]'}`}>
+            <div className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${scrapeEmails ? 'bg-brand-500' : 'bg-slate-200 dark:bg-white/[0.12]'}`}>
               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${scrapeEmails ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </div>
           </div>
@@ -256,7 +255,7 @@ export default function GeneratorForm() {
                     <button
                       type="button"
                       onClick={loadPlans}
-                      className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                      className="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline"
                     >
                       {plansLoading ? 'Loading…' : 'Show plans'}
                     </button>
@@ -326,13 +325,13 @@ export default function GeneratorForm() {
         <div className="space-y-2.5">
           <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.08] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 ease-out"
+              className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all duration-700 ease-out"
               style={{ width: `${barPct}%` }}
             />
           </div>
           <div className="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-1.5 min-w-0">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500 flex-shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500 flex-shrink-0" />
               <span className="truncate">
                 {progress
                   ? `${progress.phase === 'scraping' ? 'Scraping emails for' : 'Searching'} ${progress.index + 1}/${progress.total}: ${progress.keyword}`
@@ -361,7 +360,7 @@ export default function GeneratorForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:from-indigo-700 active:to-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-500/20 text-sm"
+          className="mt-auto w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-brand-500/20 text-sm"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
             : <><Zap className="w-4 h-4" />Generate Leads</>}
