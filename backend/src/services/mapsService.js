@@ -1,6 +1,8 @@
 const axios = require('axios');
 const { GoogleAuth } = require('google-auth-library');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 let cachedToken = null;
 let tokenExpiry = 0;
@@ -10,10 +12,20 @@ const RETRY_DELAYS_MS = [2000, 5000, 12000];
 
 async function getAccessToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-  const auth = new GoogleAuth({
-    keyFile: path.resolve(process.env.SERVICE_ACCOUNT_PATH || './service-account.json'),
-    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-  });
+
+  let authOptions;
+
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    // Railway: service account JSON pasted as env variable
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    authOptions = { credentials, scopes: ['https://www.googleapis.com/auth/cloud-platform'] };
+  } else {
+    // Local: read from file
+    const keyFile = path.resolve(process.env.SERVICE_ACCOUNT_PATH || './service-account.json');
+    authOptions = { keyFile, scopes: ['https://www.googleapis.com/auth/cloud-platform'] };
+  }
+
+  const auth = new GoogleAuth(authOptions);
   const client = await auth.getClient();
   const { token } = await client.getAccessToken();
   cachedToken = token;
@@ -21,7 +33,8 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-async function post(body, fieldMask, token) {
+async function post(body, fieldMask) {
+  const token = await getAccessToken();
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
       return await axios.post(
@@ -48,8 +61,7 @@ async function post(body, fieldMask, token) {
   }
 }
 
-// Paginate through all pages of a single Places text search body
-async function fetchAllPages(initialBody, token) {
+async function fetchAllPages(initialBody) {
   const results = [];
   let pageToken = null;
 
@@ -59,8 +71,7 @@ async function fetchAllPages(initialBody, token) {
 
     const res = await post(
       body,
-      'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,nextPageToken',
-      token
+      'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,nextPageToken'
     );
 
     for (const place of res.data.places || []) {
@@ -83,19 +94,16 @@ async function fetchAllPages(initialBody, token) {
   return results;
 }
 
-/** Get the geographic bounding box for a location name. */
-async function getLocationViewport(locationName, token) {
+async function getLocationViewport(locationName) {
   try {
     const res = await post(
       { textQuery: locationName, maxResultCount: 1 },
-      'places.viewport,places.location',
-      token
+      'places.viewport,places.location'
     );
     const place = res.data.places?.[0];
     if (place?.viewport?.low && place?.viewport?.high) return place.viewport;
     if (place?.location) {
       const { latitude: lat, longitude: lng } = place.location;
-      // Fallback: build a ±0.15° box (~16 km)
       return {
         low:  { latitude: lat - 0.15, longitude: lng - 0.15 },
         high: { latitude: lat + 0.15, longitude: lng + 0.15 },
@@ -107,30 +115,18 @@ async function getLocationViewport(locationName, token) {
   return null;
 }
 
-/**
- * Choose grid size based on the geographic span of the area.
- *
- * span (°)   approx size         grid    cells   max results
- * ─────────  ──────────────────  ──────  ──────  ───────────
- * < 0.15     small locality      1 × 1      1        60
- * 0.15–0.5   district / suburb   2 × 2      4       240
- * 0.5–2      major city          3 × 3      9       540
- * 2–8        state / region      4 × 4     16       960
- * > 8        country / huge area 5 × 5     25     1 500
- */
 function chooseGridSize(viewport) {
   const span = Math.max(
     Math.abs(viewport.high.latitude  - viewport.low.latitude),
     Math.abs(viewport.high.longitude - viewport.low.longitude)
   );
-  if (span >= 8)   return 5;
-  if (span >= 2)   return 4;
-  if (span >= 0.5) return 3;
+  if (span >= 8)    return 5;
+  if (span >= 2)    return 4;
+  if (span >= 0.5)  return 3;
   if (span >= 0.15) return 2;
   return 1;
 }
 
-/** Split a viewport into an N×N grid of rectangles. */
 function buildGrid(viewport, n) {
   const latStep = (viewport.high.latitude  - viewport.low.latitude)  / n;
   const lngStep = (viewport.high.longitude - viewport.low.longitude) / n;
@@ -152,7 +148,6 @@ function buildGrid(viewport, n) {
   return cells;
 }
 
-/** Extract keyword and location(s) from a natural query string. */
 function extractLocation(query) {
   const patterns = [
     /^(.+?)\s+in\s+(.+)$/i,
@@ -167,13 +162,6 @@ function extractLocation(query) {
   return { keyword: query.trim(), locationStr: '' };
 }
 
-/**
- * Split a location string into individual city/area names.
- * Supports:  "Mumbai, Delhi, Bangalore"
- *            "Mumbai and Delhi"
- *            "Mumbai & Delhi"
- *            "all cities in Maharashtra"  → returns ["Maharashtra"]
- */
 function splitLocations(locationStr) {
   return locationStr
     .split(/,|\s+and\s+|\s*&\s*/i)
@@ -181,16 +169,12 @@ function splitLocations(locationStr) {
     .filter(Boolean);
 }
 
-/**
- * Run a full grid-based search for a single location.
- * Returns all deduplicated leads tagged with `keyword`.
- */
-async function gridSearchForLocation(keyword, location, originalQuery, token) {
-  const viewport = await getLocationViewport(location, token);
+async function gridSearchForLocation(keyword, location, originalQuery) {
+  const viewport = await getLocationViewport(location);
 
   if (!viewport) {
     console.warn(`  no viewport for "${location}", falling back to text search`);
-    const results = await fetchAllPages({ textQuery: `${keyword} in ${location}`, maxResultCount: 20 }, token);
+    const results = await fetchAllPages({ textQuery: `${keyword} in ${location}`, maxResultCount: 20 });
     return results.map(l => ({ ...l, keyword: originalQuery }));
   }
 
@@ -202,8 +186,7 @@ async function gridSearchForLocation(keyword, location, originalQuery, token) {
   for (let i = 0; i < cells.length; i++) {
     try {
       const cellResults = await fetchAllPages(
-        { textQuery: keyword, maxResultCount: 20, locationRestriction: { rectangle: cells[i] } },
-        token
+        { textQuery: keyword, maxResultCount: 20, locationRestriction: { rectangle: cells[i] } }
       );
       all.push(...cellResults);
       if (cellResults.length > 0) {
@@ -218,24 +201,12 @@ async function gridSearchForLocation(keyword, location, originalQuery, token) {
   return all.map(l => ({ ...l, keyword: originalQuery }));
 }
 
-/**
- * Main search entry point.
- *
- * Supports:
- *   "hotels"                          → plain text search (~60)
- *   "hotels in Mumbai"                → 3×3 grid  (~540)
- *   "hotels in Andheri"               → 2×2 grid  (~240)
- *   "hotels in Maharashtra"           → 4×4 grid  (~960)
- *   "hotels in India"                 → 5×5 grid  (~1500)
- *   "hotels in Mumbai, Delhi, Pune"   → 3 separate grid searches, merged
- */
 async function searchPlaces(query) {
-  const token = await getAccessToken();
   const { keyword, locationStr } = extractLocation(query);
 
   if (!locationStr) {
     console.log(`[maps] plain search: "${query}"`);
-    return dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }, token));
+    return dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
   }
 
   const locations = splitLocations(locationStr);
@@ -246,7 +217,7 @@ async function searchPlaces(query) {
     const loc = locations[i];
     console.log(`[maps] searching location ${i + 1}/${locations.length}: "${loc}"`);
     try {
-      const results = await gridSearchForLocation(keyword, loc, query, token);
+      const results = await gridSearchForLocation(keyword, loc, query);
       all.push(...results);
       console.log(`  "${loc}" contributed ${results.length} leads (running total: ${all.length})`);
     } catch (err) {
