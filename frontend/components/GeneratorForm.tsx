@@ -360,7 +360,7 @@ export default function GeneratorForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-auto w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-brand-500/20 text-sm"
+          className="mt-auto w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-brand-500/20 text-sm"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
             : <><Zap className="w-4 h-4" />Generate Leads</>}

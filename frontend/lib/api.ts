@@ -135,3 +135,41 @@ export async function purchasePlan(planId: number): Promise<{ balance: number; t
   if (!res.ok) throw new Error(data.error || 'Purchase failed')
   return data
 }
+
+export interface UserProfile {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  city: string | null
+  business_name: string | null
+  gst: string | null
+  created_at: string
+}
+
+export async function fetchProfile(): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/api/auth/me`, { headers: authHeaders(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to fetch profile')
+  return (await res.json()).user
+}
+
+export async function updateProfile(data: { name: string; phone: string; city: string; businessName: string; gst?: string }): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/api/auth/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Update failed')
+  return json.user
+}
+
+export async function deleteAccount(password: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/auth/account`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ password }),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Deletion failed')
+}

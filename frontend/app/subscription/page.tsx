@@ -38,12 +38,12 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
   .page { max-width: 720px; margin: 0 auto; padding: 48px 40px; }
 
   /* Header */
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; padding-bottom: 28px; border-bottom: 3px solid #E8951A; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; padding-bottom: 28px; border-bottom: 3px solid #EE9535; }
   .logo-block .company { font-size: 22px; font-weight: 800; color: #1e293b; }
   .logo-block .tagline { font-size: 11px; color: #64748b; margin-top: 2px; }
-  .logo-placeholder { width: 60px; height: 60px; border-radius: 12px; background: #E8951A; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 20px; margin-bottom: 8px; }
+  .logo-placeholder { width: 60px; height: 60px; border-radius: 12px; background: #EE9535; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 20px; margin-bottom: 8px; }
   .invoice-label { text-align: right; }
-  .invoice-label .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #E8951A; margin-bottom: 4px; }
+  .invoice-label .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #EE9535; margin-bottom: 4px; }
   .invoice-label .number { font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; }
   .invoice-label .inv-date { font-size: 12px; color: #64748b; margin-top: 4px; }
 
@@ -55,7 +55,7 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
 
   /* Items table */
   table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  thead tr { background: #E8951A; color: #fff; }
+  thead tr { background: #EE9535; color: #fff; }
   thead th { padding: 11px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: left; }
   thead th:last-child, thead th:nth-child(2) { text-align: right; }
   tbody tr { border-bottom: 1px solid #e2e8f0; }
@@ -68,7 +68,7 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
   /* Totals */
   .totals { margin-left: auto; width: 240px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
   .totals-row { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #e2e8f0; }
-  .totals-row:last-child { border-bottom: none; background: #fff7ed; font-weight: 800; font-size: 15px; color: #E8951A; }
+  .totals-row:last-child { border-bottom: none; background: #fff7ed; font-weight: 800; font-size: 15px; color: #EE9535; }
   .totals-row.sub-row { color: #64748b; }
 
   /* Status badge */
@@ -77,7 +77,7 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
   /* Footer */
   .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; }
   .footer .note { font-size: 11px; color: #94a3b8; line-height: 1.6; }
-  .footer .thank { font-size: 13px; font-weight: 700; color: #E8951A; }
+  .footer .thank { font-size: 13px; font-weight: 700; color: #EE9535; }
 
   @media print {
     body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
@@ -134,7 +134,7 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
         <tr>
           <td>
             <div style="font-weight:600">${entry.plan_name} Plan — Lead Generation Tokens</div>
-            <div class="sub">LeadGen platform · 1 token = 1 lead saved · e-marketing.io</div>
+            <div class="sub">GMB Leads Extractor · 1 token = 1 lead saved · e-marketing.io</div>
           </td>
           <td>${entry.tokens_purchased.toLocaleString('en-IN')}</td>
           <td>₹${amount}</td>
@@ -239,7 +239,7 @@ function InvoiceModal({ entry, onClose }: { entry: SubEntry; onClose: () => void
                 <tr className="border-t border-slate-100 dark:border-white/[0.04]">
                   <td className="px-4 py-3.5">
                     <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{entry.plan_name} Plan — Lead Tokens</p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">LeadGen · 1 token = 1 lead saved</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">GMB Leads Extractor · 1 token = 1 lead saved</p>
                   </td>
                   <td className="px-4 py-3.5 text-right font-medium text-slate-600 dark:text-slate-300 text-sm">
                     {entry.tokens_purchased.toLocaleString('en-IN')}
@@ -280,7 +280,7 @@ function InvoiceModal({ entry, onClose }: { entry: SubEntry; onClose: () => void
           </button>
           <button
             onClick={onClose}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition-all shadow-md shadow-brand-500/25"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition-all shadow-md shadow-brand-500/20"
           >
             <X className="w-4 h-4" /> Close
           </button>
@@ -342,7 +342,7 @@ function PricingModal({ onClose, onPurchase }: { onClose: () => void; onPurchase
                 </div>
                 <p className="text-xs text-slate-400 dark:text-slate-500">₹{plan.price_per_token}/token</p>
                 <button onClick={() => handleBuy(plan)} disabled={purchasing !== null}
-                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/25 disabled:opacity-60' : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-60'}`}>
+                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 disabled:opacity-60' : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-60'}`}>
                   {purchasing === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                   {purchasing === plan.id ? 'Processing…' : 'Buy Now'}
                 </button>
@@ -397,7 +397,7 @@ export default function SubscriptionPage() {
           <button onClick={load} disabled={loading} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 transition-all shadow-sm">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
-          <button onClick={() => setShowRecharge(true)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/25 transition-all">
+          <button onClick={() => setShowRecharge(true)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 transition-all">
             <Zap className="w-3.5 h-3.5" /> Buy Tokens
           </button>
         </div>

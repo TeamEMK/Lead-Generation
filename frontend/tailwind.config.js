@@ -12,18 +12,19 @@ module.exports = {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // e-marketing.io primary orange
+        // e-marketing.io brand colors (from brand guidelines PDF)
+        // #EEBC2E = gold (primary), #EE9535 = orange (primary CTA)
         brand: {
-          50:  '#fef7e8',
-          100: '#fdecc4',
-          200: '#fbd489',
-          300: '#f9bb4e',
-          400: '#f0a220',
-          500: '#E8951A',
-          600: '#c97c12',
-          700: '#a5620d',
-          800: '#854e0c',
-          900: '#6c3f0b',
+          50:  '#fffbec',
+          100: '#fef3c7',
+          200: '#fde58a',
+          300: '#fbd24e',
+          400: '#EEBC2E', // brand gold
+          500: '#EE9535', // brand orange — primary CTA
+          600: '#d4781a',
+          700: '#af5e14',
+          800: '#8c4a11',
+          900: '#733c10',
         },
         // e-marketing.io dark navy
         navy: {
@@ -38,12 +39,17 @@ module.exports = {
           800: '#181d3c',
           900: '#1A1F35',
         },
+        // secondary brand colors from guidelines
+        teal: {
+          400: '#65C9CF',
+          500: '#4ab5bb',
+        },
         primary: {
-          50:  '#fef7e8',
-          100: '#fdecc4',
-          500: '#E8951A',
-          600: '#c97c12',
-          700: '#a5620d',
+          50:  '#fffbec',
+          100: '#fef3c7',
+          500: '#EE9535',
+          600: '#d4781a',
+          700: '#af5e14',
         },
       },
       animation: {

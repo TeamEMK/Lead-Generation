@@ -75,7 +75,7 @@ function PricingModal({ onClose }: { onClose: () => void }) {
                   onClick={() => { onClose(); router.push(`/select-plan?planId=${plan.id}`) }}
                   className={`w-full py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     plan.popular
-                      ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/25'
+                      ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20'
                       : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100'
                   }`}>
                   <Zap className="w-4 h-4" />
@@ -168,7 +168,7 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => setShowPricing(true)}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 transition-all"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all"
           >
             <Zap className="w-4 h-4" />
             Recharge Tokens

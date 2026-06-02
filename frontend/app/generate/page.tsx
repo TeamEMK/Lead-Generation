@@ -89,7 +89,7 @@ export default function GeneratePage() {
         {/* Form card */}
         <div className="rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141c32] shadow-sm overflow-hidden flex flex-col">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-white/[0.04] flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-sm shadow-brand-500/25 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-sm shadow-brand-500/20 flex-shrink-0">
               <Zap className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -113,7 +113,7 @@ export default function GeneratePage() {
                 </span>
                 <button
                   onClick={() => downloadCSV(leads)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-500 text-white transition-colors shadow-sm shadow-brand-500/25"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-500 text-white transition-colors shadow-sm shadow-brand-500/20"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download CSV

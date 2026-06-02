@@ -36,9 +36,17 @@ async function initDb() {
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
+      phone VARCHAR(20),
+      city VARCHAR(100),
+      business_name VARCHAR(255),
+      gst VARCHAR(20),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100)`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gst VARCHAR(20)`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS generation_runs (
       id SERIAL PRIMARY KEY,

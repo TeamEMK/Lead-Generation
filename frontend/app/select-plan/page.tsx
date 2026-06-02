@@ -62,11 +62,11 @@ function SelectPlanContent() {
       {/* Top bar */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#0d1228]">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/25">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/20">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
+            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
           </span>
         </Link>
         {/* Steps */}
@@ -196,7 +196,7 @@ function SelectPlanContent() {
                   <button
                     onClick={() => setStep('pay')}
                     disabled={!selectedPlan}
-                    className="flex items-center gap-2 px-10 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-base shadow-xl shadow-brand-500/25 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-10 py-3.5 rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-base shadow-xl shadow-brand-500/20 transition-all disabled:opacity-50"
                   >
                     Continue with {selectedPlan?.name}
                     <ArrowRight className="w-4 h-4" />
@@ -257,7 +257,7 @@ function SelectPlanContent() {
             <button
               onClick={handlePay}
               disabled={paying}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition-all disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-sm shadow-xl shadow-brand-500/20 transition-all disabled:opacity-60"
             >
               {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
               {paying ? 'Processing…' : `Confirm & Pay ₹${selectedPlan?.price_inr.toLocaleString()}`}

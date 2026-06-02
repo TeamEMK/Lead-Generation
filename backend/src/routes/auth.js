@@ -5,9 +5,12 @@ const pool = require('../db');
 const requireAuth = require('../middleware/auth');
 
 router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
+  const { name, email, password, phone, city, businessName, gst } = req.body;
+  if (!name || !email || !password || !phone || !city || !businessName)
+    return res.status(400).json({ error: 'Name, email, password, mobile, city and business name are required' });
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
 
   try {
     const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -15,8 +18,8 @@ router.post('/signup', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      'INSERT INTO users (name, email, password_hash, tokens_balance) VALUES ($1, $2, $3, 30) RETURNING id',
-      [name, email, hash]
+      'INSERT INTO users (name, email, password_hash, phone, city, business_name, gst, tokens_balance) VALUES ($1, $2, $3, $4, $5, $6, $7, 30) RETURNING id',
+      [name, email, hash, phone, city, businessName, gst || null]
     );
     const id = result.rows[0].id;
     await pool.query(
@@ -54,13 +57,50 @@ router.post('/login', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, name, email, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, phone, city, business_name, gst, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     res.json({ user: rows[0] });
   } catch (err) {
     console.error('[auth/me]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/auth/profile — update profile fields
+router.put('/profile', requireAuth, async (req, res) => {
+  const { name, phone, city, businessName, gst } = req.body;
+  if (!name || !phone || !city || !businessName)
+    return res.status(400).json({ error: 'Name, phone, city and business name are required' });
+  if (!/^\d{10}$/.test(phone))
+    return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET name=$1, phone=$2, city=$3, business_name=$4, gst=$5 WHERE id=$6
+       RETURNING id, name, email, phone, city, business_name, gst, created_at`,
+      [name, phone, city, businessName, gst || null, req.user.id]
+    );
+    res.json({ user: rows[0] });
+  } catch (err) {
+    console.error('[auth/profile]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /api/auth/account — permanently delete account and all data
+router.delete('/account', requireAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password required to confirm deletion' });
+  try {
+    const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+    const valid = await bcrypt.compare(password, rows[0].password_hash);
+    if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+    await pool.query('DELETE FROM users WHERE id = $1', [req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[auth/account delete]', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

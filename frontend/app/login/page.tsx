@@ -40,11 +40,11 @@ export default function LoginPage() {
       {/* Top-left logo */}
       <header className="relative z-10 px-6 py-4">
         <Link href="/" className="inline-flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/25 group-hover:scale-105 transition-transform">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
+            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
           </span>
         </Link>
       </header>
@@ -54,7 +54,7 @@ export default function LoginPage() {
           {/* Heading */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Welcome back</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">Sign in to your LeadGen account</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">Sign in to your GMB Leads Extractor account</p>
           </div>
 
           {/* Card */}
@@ -93,7 +93,7 @@ export default function LoginPage() {
               </div>
 
               <button type="submit" disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150 mt-2">
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150 mt-2">
                 {loading
                   ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   : <><span>Sign in</span><ArrowRight className="w-4 h-4" /></>

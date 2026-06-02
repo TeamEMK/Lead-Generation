@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes'
 import {
   LayoutDashboard, Zap, Database, LogOut,
   Pin, PinOff, Loader2, Sun, Moon, History,
-  Coins, CreditCard, Menu, X,
+  Coins, CreditCard, Menu, X, Settings,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGeneration } from '../context/GenerationContext'
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/leads', label: 'Leads', icon: Database },
   { href: '/history', label: 'History', icon: History },
   { href: '/subscription', label: 'Subscription', icon: CreditCard },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 function SidebarContent({
@@ -33,11 +34,11 @@ function SidebarContent({
       {/* Logo */}
       <div className="flex items-center h-14 px-3 flex-shrink-0 border-b border-slate-100 dark:border-white/[0.05]">
         <Link href="/" onClick={onNavClick} className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30 flex-shrink-0">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30 flex-shrink-0">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
           <span className={`font-bold text-slate-900 dark:text-white text-sm tracking-tight whitespace-nowrap transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
+            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
           </span>
         </Link>
         {expanded && (
@@ -211,11 +212,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </button>
 
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
+            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
           </span>
         </Link>
 
@@ -240,11 +241,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-500 via-brand-500 to-brand-500" />
             <div className="flex items-center justify-between h-14 px-4 border-b border-slate-100 dark:border-white/[0.05] flex-shrink-0">
               <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/30">
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30">
                   <Zap className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-                  Lead<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">Gen</span>
+                  GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
                 </span>
               </Link>
               <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
