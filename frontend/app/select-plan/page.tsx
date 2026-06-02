@@ -62,12 +62,7 @@ function SelectPlanContent() {
       {/* Top bar */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#0d1228]">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/20">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-          </span>
+          <img src="/logo.png" alt="e-Marketing" className="h-9 w-auto" />
         </Link>
         {/* Steps */}
         <div className="flex items-center gap-1">
@@ -172,7 +167,7 @@ function SelectPlanContent() {
                           <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
                             ₹{plan.price_inr.toLocaleString()}
                           </p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">one-time</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">/month</p>
                         </div>
                         <div className={`rounded-xl p-3 text-center ${isSelected ? 'bg-brand-100 dark:bg-brand-500/20' : 'bg-slate-100 dark:bg-white/[0.05]'}`}>
                           <p className={`text-xl font-extrabold ${isSelected ? 'text-brand-600 dark:text-brand-400' : 'text-slate-700 dark:text-slate-200'}`}>

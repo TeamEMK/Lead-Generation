@@ -100,7 +100,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           let evt: any
           try { evt = JSON.parse(line.slice(6)) } catch { continue }
 
-          if (evt.type === 'searching') {
+          if (evt.type === 'cell_progress') {
+            setProgress(p => p ? { ...p, totalSoFar: evt.partialCount } : p)
+          } else if (evt.type === 'searching') {
             setProgress({ index: evt.index, total: evt.total, keyword: evt.keyword, phase: 'searching', totalSoFar: 0, etaMs: 0 })
           } else if (evt.type === 'scraping') {
             setProgress(p => p ? { ...p, phase: 'scraping' } : p)

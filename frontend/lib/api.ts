@@ -108,6 +108,7 @@ export interface Subscription {
     amount_paid_inr: number
     status: string
     invoice_number: string | null
+    expires_at: string | null
     created_at: string
   }[]
   transactions: {
@@ -162,6 +163,19 @@ export async function updateProfile(data: { name: string; phone: string; city: s
   const json = await res.json()
   if (!res.ok) throw new Error(json.error || 'Update failed')
   return json.user
+}
+
+export interface PlanStatus {
+  balance: number
+  plan_name: string | null
+  expires_at: string | null
+  days_remaining: number | null
+}
+
+export async function fetchPlanStatus(): Promise<PlanStatus> {
+  const res = await fetch(`${API_URL}/api/tokens/status`, { headers: authHeaders(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to fetch plan status')
+  return res.json()
 }
 
 export async function deleteAccount(password: string): Promise<void> {

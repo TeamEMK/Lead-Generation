@@ -29,8 +29,8 @@ function PricingModal({ onClose }: { onClose: () => void }) {
 
         <div className="flex items-start justify-between mb-8">
           <div>
-            <p className="text-xs font-semibold text-brand-500 uppercase tracking-widest mb-1">Recharge</p>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Choose a plan</h2>
+            <p className="text-xs font-semibold text-brand-500 uppercase tracking-widest mb-1">Renew Plan</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Renew or Upgrade Plan</h2>
           </div>
           <button onClick={onClose} className="hidden sm:flex p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-all">
             <X className="w-4 h-4" />
@@ -79,7 +79,7 @@ function PricingModal({ onClose }: { onClose: () => void }) {
                       : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100'
                   }`}>
                   <Zap className="w-4 h-4" />
-                  Buy Now
+                  Renew Now
                 </button>
               </div>
             ))}
@@ -171,7 +171,7 @@ export default function DashboardPage() {
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all"
           >
             <Zap className="w-4 h-4" />
-            Recharge Tokens
+            Renew Plan Tokens
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>

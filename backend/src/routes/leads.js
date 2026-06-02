@@ -94,7 +94,9 @@ router.post('/generate', async (req, res) => {
 
     let found = [];
     try {
-      found = await searchPlaces(keyword);
+      found = await searchPlaces(keyword, count => {
+        send({ type: 'cell_progress', keyword, index: i, total: keywords.length, partialCount: count });
+      });
     } catch (err) {
       console.error(`searchPlaces error for "${keyword}":`, err.message);
       send({ type: 'keyword_error', keyword, index: i, total: keywords.length, message: err.message });

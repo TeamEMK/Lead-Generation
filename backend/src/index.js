@@ -121,10 +121,12 @@ async function initDb() {
       amount_paid_inr INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
       invoice_number TEXT,
+      expires_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
   await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS invoice_number TEXT`);
+  await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
   // Token transaction log
   await pool.query(`
     CREATE TABLE IF NOT EXISTS token_transactions (

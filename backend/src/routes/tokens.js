@@ -39,7 +39,7 @@ router.get('/subscription', async (req, res) => {
     const user = userRows[0];
 
     const { rows: subs } = await pool.query(
-      `SELECT s.id, s.tokens_purchased, s.amount_paid_inr, s.status, s.created_at, s.invoice_number,
+      `SELECT s.id, s.tokens_purchased, s.amount_paid_inr, s.status, s.created_at, s.invoice_number, s.expires_at,
               p.name AS plan_name, p.price_inr, p.tokens AS plan_tokens
        FROM subscriptions s
        JOIN plans p ON p.id = s.plan_id
@@ -86,6 +86,34 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+// GET /api/tokens/status — lightweight: balance + active plan expiry
+router.get('/status', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT u.tokens_balance, s.expires_at, p.name AS plan_name
+       FROM users u
+       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
+       LEFT JOIN plans p ON p.id = s.plan_id
+       WHERE u.id = $1
+       ORDER BY s.created_at DESC
+       LIMIT 1`,
+      [req.user.id]
+    );
+    const row = rows[0];
+    const expiresAt = row?.expires_at ?? null;
+    const msLeft = expiresAt ? new Date(expiresAt) - new Date() : null;
+    const daysRemaining = msLeft !== null ? Math.ceil(msLeft / (1000 * 60 * 60 * 24)) : null;
+    res.json({
+      balance: row?.tokens_balance ?? 0,
+      plan_name: row?.plan_name ?? null,
+      expires_at: expiresAt,
+      days_remaining: daysRemaining,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/tokens/purchase
 router.post('/purchase', async (req, res) => {
   const { planId } = req.body;
@@ -108,17 +136,37 @@ router.post('/purchase', async (req, res) => {
     const counter = String(parseInt(cntRows[0].cnt) + 1).padStart(3, '0');
     const invoiceNumber = `JM/${yyyy}${mm}${dd}${counter}`;
 
+    // Expire any currently active subscription
     await pool.query(
-      'UPDATE users SET tokens_balance = tokens_balance + $1, active_plan_id = $2 WHERE id = $3',
+      `UPDATE subscriptions SET status = 'expired' WHERE user_id = $1 AND status = 'active'`,
+      [req.user.id]
+    );
+
+    // First activation: ADD plan tokens to existing balance (preserves free 30 tokens)
+    // Renewal/upgrade: REPLACE balance (old plan tokens don't carry forward)
+    const { rows: prevSub } = await pool.query(
+      `SELECT id FROM subscriptions WHERE user_id = $1 AND status = 'expired' LIMIT 1`,
+      [req.user.id]
+    );
+    const isFirstPlan = prevSub.length === 0;
+    await pool.query(
+      isFirstPlan
+        ? 'UPDATE users SET tokens_balance = tokens_balance + $1, active_plan_id = $2 WHERE id = $3'
+        : 'UPDATE users SET tokens_balance = $1, active_plan_id = $2 WHERE id = $3',
       [plan.tokens, plan.id, req.user.id]
     );
+
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + 1);
+
     await pool.query(
-      'INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number) VALUES ($1, $2, $3, $4, $5)',
-      [req.user.id, plan.id, plan.tokens, plan.price_inr, invoiceNumber]
+      `INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.user.id, plan.id, plan.tokens, plan.price_inr, invoiceNumber, expiresAt]
     );
     await pool.query(
       'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-      [req.user.id, 'purchase', plan.tokens, `Purchased ${plan.name} plan — ₹${plan.price_inr}`]
+      [req.user.id, 'purchase', plan.tokens, `${plan.name} plan activated — ₹${plan.price_inr} · expires ${expiresAt.toLocaleDateString('en-IN')}`]
     );
 
     const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);

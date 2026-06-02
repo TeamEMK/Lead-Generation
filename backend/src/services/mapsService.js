@@ -169,13 +169,15 @@ function splitLocations(locationStr) {
     .filter(Boolean);
 }
 
-async function gridSearchForLocation(keyword, location, originalQuery) {
+async function gridSearchForLocation(keyword, location, originalQuery, onProgress) {
   const viewport = await getLocationViewport(location);
 
   if (!viewport) {
     console.warn(`  no viewport for "${location}", falling back to text search`);
     const results = await fetchAllPages({ textQuery: `${keyword} in ${location}`, maxResultCount: 20 });
-    return results.map(l => ({ ...l, keyword: originalQuery }));
+    const mapped = results.map(l => ({ ...l, keyword: originalQuery }));
+    if (onProgress) onProgress(mapped.length);
+    return mapped;
   }
 
   const n = chooseGridSize(viewport);
@@ -195,18 +197,21 @@ async function gridSearchForLocation(keyword, location, originalQuery) {
     } catch (err) {
       console.warn(`    cell ${i + 1} failed: ${err.message}`);
     }
+    if (onProgress) onProgress(all.length);
     if (i < cells.length - 1) await sleep(500);
   }
 
   return all.map(l => ({ ...l, keyword: originalQuery }));
 }
 
-async function searchPlaces(query) {
+async function searchPlaces(query, onProgress) {
   const { keyword, locationStr } = extractLocation(query);
 
   if (!locationStr) {
     console.log(`[maps] plain search: "${query}"`);
-    return dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
+    const results = dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
+    if (onProgress) onProgress(results.length);
+    return results;
   }
 
   const locations = splitLocations(locationStr);
@@ -217,7 +222,9 @@ async function searchPlaces(query) {
     const loc = locations[i];
     console.log(`[maps] searching location ${i + 1}/${locations.length}: "${loc}"`);
     try {
-      const results = await gridSearchForLocation(keyword, loc, query);
+      const results = await gridSearchForLocation(keyword, loc, query, count => {
+        if (onProgress) onProgress(all.length + count);
+      });
       all.push(...results);
       console.log(`  "${loc}" contributed ${results.length} leads (running total: ${all.length})`);
     } catch (err) {

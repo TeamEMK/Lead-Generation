@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGeneration } from '../context/GenerationContext'
-import { fetchTokenBalance } from '../lib/api'
+import { fetchTokenBalance, fetchPlanStatus, type PlanStatus } from '../lib/api'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,13 +34,12 @@ function SidebarContent({
       {/* Logo — hidden on mobile drawer (drawer has its own header) */}
       {showLogo && (
         <div className="flex items-center h-14 px-3 flex-shrink-0 border-b border-slate-100 dark:border-white/[0.05]">
-          <Link href="/" onClick={onNavClick} className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30 flex-shrink-0">
-              <Zap className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className={`font-bold text-slate-900 dark:text-white text-sm tracking-tight whitespace-nowrap transition-all duration-200 ${expanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
-              GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-            </span>
+          <Link href="/" onClick={onNavClick} className="flex items-center min-w-0">
+            <img
+              src="/logo.png"
+              alt="e-Marketing"
+              className={`w-auto flex-shrink-0 transition-all duration-200 ${expanded ? 'h-9' : 'h-7'}`}
+            />
           </Link>
           {expanded && (
             <button
@@ -152,6 +151,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState<number | null>(null)
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
 
   const expanded = pinned || hovered
@@ -163,6 +163,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [])
   useEffect(() => {
     fetchTokenBalance().then(setTokenBalance).catch(() => {})
+    fetchPlanStatus().then(setPlanStatus).catch(() => {})
   }, [pathname])
   useEffect(() => {
     setMobileOpen(false)
@@ -213,13 +214,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30">
-            <Zap className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-          </span>
+        <Link href="/">
+          <img src="/logo.png" alt="e-Marketing" className="h-8 w-auto" />
         </Link>
 
         <Link href="/subscription" className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
@@ -242,13 +238,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-500 via-brand-500 to-brand-500" />
             <div className="flex items-center justify-between h-14 px-4 border-b border-slate-100 dark:border-white/[0.05] flex-shrink-0">
-              <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/30">
-                  <Zap className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-                  GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-                </span>
+              <Link href="/" onClick={() => setMobileOpen(false)}>
+                <img src="/logo.png" alt="e-Marketing" className="h-8 w-auto" />
               </Link>
               <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
                 <X className="w-4 h-4" />
@@ -276,6 +267,52 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* ── Main content ── */}
       <div className={`transition-all duration-200 ${expanded ? 'lg:ml-[232px]' : 'lg:ml-[68px]'}`}>
         <main className="pt-14 lg:pt-0 min-h-screen p-3 sm:p-4 lg:p-5 flex flex-col">
+          {/* ── Warning banners ── */}
+          {planStatus && (() => {
+            const lowTokens = planStatus.balance > 0 && planStatus.balance < 100
+            const noTokens = planStatus.balance === 0 && planStatus.plan_name
+            const expiringSoon = planStatus.days_remaining !== null && planStatus.days_remaining <= 7 && planStatus.days_remaining > 0
+            const expired = planStatus.days_remaining !== null && planStatus.days_remaining <= 0 && planStatus.plan_name
+
+            if (!lowTokens && !noTokens && !expiringSoon && !expired) return null
+            return (
+              <div className="space-y-2 mb-3">
+                {(noTokens || expired) && (
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-sm">
+                    <span>
+                      {noTokens
+                        ? '⚠ Your tokens are exhausted. Renew your plan to keep generating leads.'
+                        : `⚠ Your ${planStatus.plan_name} plan has expired. Renew to continue.`}
+                    </span>
+                    <Link href="/subscription" className="flex-shrink-0 px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors">
+                      Renew now
+                    </Link>
+                  </div>
+                )}
+                {expiringSoon && !expired && (
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 text-sm">
+                    <span>
+                      ⏰ Your <strong>{planStatus.plan_name}</strong> plan expires in <strong>{planStatus.days_remaining} day{planStatus.days_remaining !== 1 ? 's' : ''}</strong>. Renew to avoid interruption.
+                    </span>
+                    <Link href="/subscription" className="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-colors">
+                      Renew
+                    </Link>
+                  </div>
+                )}
+                {lowTokens && !noTokens && (
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 text-sm">
+                    <span>
+                      🪙 Only <strong>{planStatus.balance} tokens</strong> remaining. Top up before they run out.
+                    </span>
+                    <Link href="/subscription" className="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-colors">
+                      Renew
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
           <div className="bg-white dark:bg-[#0d1228] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm flex-1 flex flex-col p-4 sm:p-6 lg:p-8">
             {children}
           </div>

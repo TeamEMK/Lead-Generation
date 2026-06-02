@@ -48,13 +48,8 @@ export default function SignupPage() {
 
       {/* Logo */}
       <header className="relative z-10 px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="inline-flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
-            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-          </span>
+        <Link href="/" className="inline-flex items-center group">
+          <img src="/logo.png" alt="e-Marketing" className="h-9 w-auto group-hover:opacity-90 transition-opacity" />
         </Link>
         <a
           href="https://www.e-marketing.io"

@@ -8,44 +8,45 @@ import {
   Globe, Phone, TrendingUp, Layers, Send,
 } from 'lucide-react'
 import ThemeToggle from '../components/ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
     icon: MapPin,
-    title: 'Google Maps Integration',
-    desc: 'Search any business category in any city. We pull every result Google Maps has — no page limits.',
+    title: 'Pan-India Google Maps Search',
+    desc: 'Search any business category in any city, state, or region across India. We extract every result — no limits, no manual scrolling.',
     color: 'indigo',
   },
   {
-    icon: Sheet,
-    title: 'Auto Sheet Sync',
-    desc: 'Every lead goes straight into your Google Sheet the moment it\'s found. No copy-paste, no CSV uploads.',
+    icon: Database,
+    title: 'Instant Lead Database',
+    desc: 'Every lead is saved to your private database the moment it\'s found. Access, filter, and export anytime from any device.',
     color: 'emerald',
   },
   {
     icon: Mail,
-    title: 'Email Scraping',
-    desc: 'We visit each business website and extract contact email addresses automatically.',
+    title: 'Auto Email Discovery',
+    desc: 'We visit each business website and extract contact email addresses automatically — no copy-paste, no browser extensions needed.',
     color: 'violet',
   },
   {
     icon: Shield,
-    title: 'Smart Deduplication',
-    desc: 'Already have that lead? We detect duplicates across all your searches and skip them silently.',
+    title: 'Zero Duplicate Charges',
+    desc: 'If a lead already exists in your account, it\'s skipped automatically. You are only charged tokens for genuinely new leads.',
     color: 'amber',
   },
   {
     icon: BarChart3,
-    title: 'Analytics Dashboard',
-    desc: 'See how many leads you\'ve generated today, this week, and this month — with a 30-day chart.',
+    title: 'Live Analytics Dashboard',
+    desc: 'Track leads generated today, this week, and this month. Visual 30-day chart so you always know your pipeline health.',
     color: 'rose',
   },
   {
-    icon: Users,
-    title: 'Multi-User Ready',
-    desc: 'Each team member gets their own account and their own linked sheet. No shared credentials.',
+    icon: Globe,
+    title: 'CSV Export Anytime',
+    desc: 'Download your entire lead database or selected rows as a clean CSV in one click. Ready to import into any CRM or dialler.',
     color: 'sky',
   },
 ]
@@ -67,7 +68,7 @@ const STEPS = [
     number: '03',
     icon: Database,
     title: 'Leads land in your Sheet',
-    desc: 'Results are saved directly to your linked Google Sheet in real time. Duplicates are skipped automatically.',
+    desc: 'Results are saved instantly to your private database. Duplicates are skipped automatically — no extra tokens charged.',
   },
 ]
 
@@ -78,7 +79,7 @@ const TESTIMONIALS = [
     company: 'GrowthStack',
     avatar: 'SC',
     color: 'indigo',
-    quote: 'We used to spend 3 hours a week manually pulling leads from Google Maps. GMB Leads Extractor cut that to zero. The sheet sync is flawless.',
+    quote: 'We used to spend 3 hours a week manually pulling leads from Google Maps. GMB Leads Extractor cut that to zero. The automation is flawless.',
     stars: 5,
   },
   {
@@ -122,6 +123,7 @@ const colorMap: Record<string, string> = {
 function LandingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -142,14 +144,9 @@ function LandingNavbar() {
         {/* Logo — scrolls to top */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-center gap-2.5 group"
+          className="group"
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-slate-900 dark:text-white text-[17px] tracking-tight">
-            GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-          </span>
+          <img src="/logo.png" alt="e-Marketing" className="h-12 w-auto group-hover:opacity-90 transition-opacity" />
         </button>
 
         {/* Desktop nav */}
@@ -164,13 +161,24 @@ function LandingNavbar() {
         {/* CTAs */}
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
-          <Link href="/login" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-            Sign in
-          </Link>
-          <Link href="/signup" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-md shadow-brand-500/20 transition-all">
-            Get started
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          {!authLoading && (
+            user ? (
+              <Link href="/dashboard" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-md shadow-brand-500/20 transition-all">
+                Dashboard
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-md shadow-brand-500/20 transition-all">
+                  Get started
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </>
+            )
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -188,8 +196,16 @@ function LandingNavbar() {
             </button>
           ))}
           <div className="pt-3 flex flex-col gap-2 border-t border-slate-100 dark:border-white/[0.06]">
-            <Link href="/login" className="text-sm font-medium text-center py-2 text-slate-600 dark:text-slate-300">Sign in</Link>
-            <Link href="/signup" className="text-sm font-semibold text-center py-2 rounded-xl bg-brand-600 text-white">Get started</Link>
+            {user ? (
+              <Link href="/dashboard" className="text-sm font-semibold text-center py-2 rounded-xl bg-brand-600 text-white">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-center py-2 text-slate-600 dark:text-slate-300">Sign in</Link>
+                <Link href="/signup" className="text-sm font-semibold text-center py-2 rounded-xl bg-brand-600 text-white">Get started</Link>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -223,7 +239,7 @@ export default function LandingPage() {
         <div className="relative max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-200 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400 text-xs font-semibold mb-6">
             <Sparkles className="w-3.5 h-3.5" />
-            Powered by Google Maps API
+            Powered by Google Maps
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6">
@@ -234,7 +250,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Search Google Maps by keyword, scrape contacts from websites, and save every lead directly to your Google Sheet — automatically, in real time.
+            Type a business category and city — get phone numbers, websites, and email addresses of every matching business on Google Maps. Your complete lead database, built in minutes.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -262,7 +278,7 @@ export default function LandingPage() {
             <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
               <div className="sm:col-span-1 space-y-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Keywords</p>
-                {['Hotel', 'Hospital', 'Car Dealership', 'Dental Clinic', 'Law Firm'].map((k, i) => (
+                {['Hotels in Mumbai', 'Hospitals in Delhi', 'Car dealers in Pune', 'Dentists in Jaipur', 'Law firms in Bangalore'].map((k, i) => (
                   <div key={k} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05]">
                     <div className={`w-1.5 h-1.5 rounded-full ${i < 3 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     <span className="text-sm text-slate-700 dark:text-slate-300 font-mono">{k}</span>
@@ -274,7 +290,7 @@ export default function LandingPage() {
                 {[
                   { name: 'The Grand Hotel Mumbai', phone: '+91 22 6654 1234', status: 'Saved' },
                   { name: 'Apollo Hospitals Delhi', phone: '+91 11 2692 5858', status: 'Saved' },
-                  { name: 'Maruti Suzuki Arena Pune', phone: '+91 20 2441 3392', status: 'Saved' },
+                  { name: 'Maruti Suzuki Arena Pune', phone: '+91 20 2441 3395', status: 'Saved' },
                 ].map((l, i) => (
                   <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05]">
                     <div className="min-w-0">
@@ -290,10 +306,17 @@ export default function LandingPage() {
                 ))}
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-50 dark:bg-brand-500/10">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-                  <span className="text-xs text-brand-600 dark:text-brand-400 font-medium">Searching "Hospital" — 12 found so far…</span>
+                  <span className="text-xs text-brand-600 dark:text-brand-400 font-medium">Searching "Car dealers in Pune" — 18 found so far…</span>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Free tokens note */}
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+              🎁 <span><strong>30 free tokens</strong> on every new account — no credit card required</span>
+            </span>
           </div>
         </div>
       </section>
@@ -342,7 +365,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold text-brand-500 uppercase tracking-widest mb-3">How it works</p>
-            <h2 className="text-4xl font-extrabold tracking-tight mb-4">From keyword to Google Sheet in 3 steps</h2>
+            <h2 className="text-4xl font-extrabold tracking-tight mb-4">From keyword to lead database in 3 steps</h2>
             <p className="text-lg text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
               No technical setup. Link your sheet, type a keyword, hit Generate.
             </p>
@@ -473,7 +496,7 @@ export default function LandingPage() {
             <p className="text-xs font-semibold text-brand-500 uppercase tracking-widest mb-4">Pricing</p>
             <h2 className="text-4xl font-extrabold tracking-tight mb-4">Simple, token-based pricing</h2>
             <p className="text-lg text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-              Buy tokens once, use them anytime. 1 token = 1 lead saved. No subscriptions, no surprises.
+              Monthly plans, 1 token = 1 lead saved.
             </p>
           </div>
 
@@ -499,7 +522,7 @@ export default function LandingPage() {
                   </p>
                   <div className="flex items-end gap-1">
                     <span className="text-4xl font-extrabold text-slate-900 dark:text-white">₹{plan.price.toLocaleString()}</span>
-                    <span className="text-slate-400 dark:text-slate-500 text-sm mb-1">one-time</span>
+                    <span className="text-slate-400 dark:text-slate-500 text-sm mb-1">/month</span>
                   </div>
                 </div>
 
@@ -510,20 +533,18 @@ export default function LandingPage() {
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{plan.perToken} per token</p>
                 </div>
 
-                <ul className="space-y-2.5 flex-1">
-                  {[
-                    `${plan.tokens.toLocaleString()} leads saved`,
-                    'Unused tokens expire with plan',
-                    'Smart deduplication',
-                    'Analytics dashboard',
-                    'Email scraping',
-                  ].map(f => (
-                    <li key={f} className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-400">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <div className="flex flex-wrap gap-1.5 flex-1">
+                  {['Deduplication', 'Analytics', 'Email scraping', 'CSV export', 'Expires monthly'].map(f => (
+                    <span key={f} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      plan.popular
+                        ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300'
+                        : 'bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400'
+                    }`}>
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />
                       {f}
-                    </li>
+                    </span>
                   ))}
-                </ul>
+                </div>
 
                 <Link
                   href="/signup"
@@ -573,7 +594,7 @@ export default function LandingPage() {
             Ready to fill your pipeline?
           </h2>
           <p className="text-lg text-slate-500 dark:text-slate-400 mb-10">
-            Sign up in 30 seconds. Link your Google Sheet. Generate your first leads in under 2 minutes.
+            Sign up in 30 seconds. Get 30 free tokens instantly. Generate your first leads in under 2 minutes.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup" className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-base shadow-xl shadow-brand-500/30 transition-all">
@@ -681,12 +702,7 @@ export default function LandingPage() {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2.5 group"
           >
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Zap className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-bold text-slate-900 dark:text-white text-sm">
-              GMB <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">Leads</span>
-            </span>
+            <img src="/logo.png" alt="e-Marketing" className="h-10 w-auto group-hover:opacity-90 transition-opacity" />
           </button>
           <p className="text-xs text-slate-400 dark:text-slate-600 text-center">
             © {new Date().getFullYear()} GMB Leads Extractor. All rights reserved.
