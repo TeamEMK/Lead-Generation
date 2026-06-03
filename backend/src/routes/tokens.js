@@ -118,55 +118,65 @@ router.get('/status', async (req, res) => {
 router.post('/purchase', async (req, res) => {
   const { planId } = req.body;
   if (!planId) return res.status(400).json({ error: 'planId required' });
+
+  const client = await pool.connect();
   try {
-    const { rows: planRows } = await pool.query('SELECT * FROM plans WHERE id = $1', [planId]);
-    if (!planRows.length) return res.status(404).json({ error: 'Plan not found' });
+    await client.query('BEGIN');
+
+    const { rows: planRows } = await client.query('SELECT * FROM plans WHERE id = $1', [planId]);
+    if (!planRows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Plan not found' });
+    }
     const plan = planRows[0];
 
-    // Generate invoice number: JM/YYYYMMDDNNN (NNN = monthly counter)
+    // Generate invoice number inside transaction with lock to prevent duplicates
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
-    const { rows: cntRows } = await pool.query(
+    const { rows: cntRows } = await client.query(
       `SELECT COUNT(*) AS cnt FROM subscriptions
-       WHERE EXTRACT(YEAR FROM created_at) = $1 AND EXTRACT(MONTH FROM created_at) = $2`,
+       WHERE EXTRACT(YEAR FROM created_at) = $1 AND EXTRACT(MONTH FROM created_at) = $2
+       FOR UPDATE`,
       [yyyy, parseInt(mm)]
     );
     const counter = String(parseInt(cntRows[0].cnt) + 1).padStart(3, '0');
     const invoiceNumber = `JM/${yyyy}${mm}${dd}${counter}`;
 
-    // Expire any currently active subscription
-    await pool.query(
+    await client.query(
       `UPDATE subscriptions SET status = 'expired' WHERE user_id = $1 AND status = 'active'`,
       [req.user.id]
     );
 
-    // Always add new plan tokens to existing balance — remaining tokens carry over on renewal
-    await pool.query(
+    await client.query(
       'UPDATE users SET tokens_balance = tokens_balance + $1, active_plan_id = $2 WHERE id = $3',
       [plan.tokens, plan.id, req.user.id]
     );
 
     const expiresAt = new Date(now);
     expiresAt.setMonth(expiresAt.getMonth() + 1);
-
     const amountWithGst = Math.round(plan.price_inr * 1.18);
 
-    await pool.query(
+    await client.query(
       `INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [req.user.id, plan.id, plan.tokens, amountWithGst, invoiceNumber, expiresAt]
     );
-    await pool.query(
+    await client.query(
       'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
       [req.user.id, 'purchase', plan.tokens, `${plan.name} plan activated — ₹${amountWithGst} (incl. GST) · expires ${expiresAt.toLocaleDateString('en-IN')}`]
     );
 
+    await client.query('COMMIT');
+
     const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
     res.json({ success: true, balance: balRows[0].tokens_balance, tokens_added: plan.tokens, plan, invoiceNumber });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

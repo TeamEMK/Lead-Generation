@@ -62,6 +62,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [loading])
 
+  // Cancel SSE reader on unmount to prevent dangling connections
+  useEffect(() => {
+    return () => { readerRef.current?.cancel().catch(() => {}) }
+  }, [])
+
   const _run = useCallback(async (keywords: string[], scrapeEmails: boolean) => {
     setLoading(true)
     setError(null)

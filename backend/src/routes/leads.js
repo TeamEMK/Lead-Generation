@@ -47,7 +47,7 @@ router.post('/generate', async (req, res) => {
   const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
   let remainingTokens = balRows[0]?.tokens_balance ?? 0;
   if (remainingTokens <= 0) {
-    return res.status(402).json({ error: 'Insufficient tokens. Please recharge your account to continue.' });
+    return res.status(402).json({ error: 'No tokens remaining. Please renew your plan to continue.' });
   }
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -111,31 +111,41 @@ router.post('/generate', async (req, res) => {
 
           if (fresh.length === 0) return remainingTokens > 0;
 
-          const { rows: b } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
-          remainingTokens = b[0]?.tokens_balance ?? 0;
+          // Atomically lock the user row, read old balance, and pre-deduct (capped at 0)
+          // This prevents two concurrent requests from both over-spending tokens
+          const { rows: atomicRows } = await pool.query(`
+            WITH locked AS (SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE),
+            updated AS (
+              UPDATE users SET tokens_balance = GREATEST((SELECT tokens_balance FROM locked) - $2, 0)
+              WHERE id = $1 RETURNING tokens_balance
+            )
+            SELECT (SELECT tokens_balance FROM locked) AS old_bal, tokens_balance AS new_bal FROM updated
+          `, [req.user.id, fresh.length]);
 
-          if (remainingTokens <= 0) {
+          if (!atomicRows.length || atomicRows[0].old_bal <= 0) {
             tokenExhaustedMidSearch = true;
             return false;
           }
 
-          const toSave = fresh.slice(0, remainingTokens);
+          const actuallyDeducted = atomicRows[0].old_bal - atomicRows[0].new_bal;
+          remainingTokens = atomicRows[0].new_bal;
+
+          const toSave = fresh.slice(0, actuallyDeducted);
           const { saved, skipped } = await saveLeads(toSave, req.user.id, runId);
           totalSaved += saved;
           totalSkipped += skipped;
           kwSaved += saved;
 
-          if (saved > 0) {
+          // Refund tokens for duplicates (leads rejected by DB unique constraint)
+          if (saved < actuallyDeducted) {
             await pool.query(
-              'UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2',
-              [saved, req.user.id]
+              'UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2',
+              [actuallyDeducted - saved, req.user.id]
             );
+            remainingTokens += (actuallyDeducted - saved);
           }
 
-          allLeads.push(...toSave); // only track leads that were saved (token-limited)
-
-          const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
-          remainingTokens = balRows[0]?.tokens_balance ?? 0;
+          allLeads.push(...toSave);
           send({ type: 'token_update', tokenBalance: remainingTokens, totalSaved });
 
           if (remainingTokens <= 0) {
@@ -172,7 +182,7 @@ router.post('/generate', async (req, res) => {
       const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
       send({
         type: 'token_exhausted',
-        remainingKeywords: keywords.slice(i), // include current keyword (partially done) + rest
+        remainingKeywords: keywords.slice(i + 1), // skip current keyword (partially done, saved leads are in DB)
         savedSoFar: totalSaved,
         tokenBalance: finalBal[0]?.tokens_balance ?? 0,
         leads: allLeads,

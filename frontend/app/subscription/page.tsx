@@ -391,7 +391,7 @@ export default function SubscriptionPage() {
   const isLow = sub !== null && sub.balance < 100
 
   const totalPurchased = sub?.subscriptions.reduce((a, s) => a + s.tokens_purchased, 0) ?? 0
-  const totalUsed = sub?.transactions.filter(t => t.type === 'usage').reduce((a, t) => a + Math.abs(t.amount), 0) ?? 0
+  const totalUsed = totalPurchased - (sub?.balance ?? 0) // accurate regardless of transaction log size
 
   return (
     <div className="space-y-8">
@@ -537,7 +537,7 @@ export default function SubscriptionPage() {
                           <Coins className="w-3.5 h-3.5" />{s.tokens_purchased.toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-semibold text-slate-900 dark:text-white">₹{s.amount_paid_inr.toLocaleString()}</td>
+                      <td className="px-5 py-3.5 font-semibold text-slate-900 dark:text-white">₹{(s.price_inr + Math.round(s.price_inr * 0.18)).toLocaleString()}</td>
                       <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                         <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{fmt(s.created_at)}</span>
                       </td>
