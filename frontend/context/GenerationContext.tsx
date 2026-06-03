@@ -29,6 +29,7 @@ interface GenerationContextValue {
   paused: PausedState | null
   leads: Lead[]
   error: string | null
+  liveTokenBalance: number | null
   generate: (keywords: string[], scrapeEmails: boolean) => void
   resume: () => void
   clear: () => void
@@ -44,6 +45,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [paused, setPaused] = useState<PausedState | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [liveTokenBalance, setLiveTokenBalance] = useState<number | null>(null)
 
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const startRef = useRef(0)
@@ -65,6 +67,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setError(null)
     setPaused(null)
     setProgress(null)
+    setLiveTokenBalance(null)
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -109,7 +112,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           } else if (evt.type === 'keyword_done') {
             setProgress({ index: evt.index, total: evt.total, keyword: evt.keyword, phase: 'done', totalSoFar: evt.totalSoFar, etaMs: evt.etaMs })
             if (evt.tokenBalance !== undefined) {
-              // live balance update mid-stream
+              setLiveTokenBalance(evt.tokenBalance)
             }
           } else if (evt.type === 'keyword_error') {
             setProgress(p => p ? { ...p, phase: 'error' } : p)
@@ -128,6 +131,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             setProgress(null)
           } else if (evt.type === 'done') {
             setResult({ saved: evt.saved, skipped: evt.skipped, tokenBalance: evt.tokenBalance ?? 0 })
+            setLiveTokenBalance(evt.tokenBalance ?? 0)
             setLeads((evt.leads ?? []).map((l: any, i: number) => ({ ...l, id: i + 1 })))
             setProgress(null)
             setPaused(null)
@@ -169,7 +173,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   return (
-    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, generate, resume, clear }}>
+    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, liveTokenBalance, generate, resume, clear }}>
       {children}
     </GenerationContext.Provider>
   )

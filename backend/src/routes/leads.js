@@ -115,7 +115,7 @@ router.post('/generate', async (req, res) => {
     const toSave = found.slice(0, remainingTokens);
     const { saved, skipped } = await saveLeads(toSave, req.user.id, runId);
     totalSaved += saved;
-    totalSkipped += skipped + (found.length - toSave.length);
+    totalSkipped += skipped; // only count actual per-user duplicates, not token-limited leads
 
     if (saved > 0) {
       await pool.query(

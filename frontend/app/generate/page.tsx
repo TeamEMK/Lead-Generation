@@ -46,7 +46,7 @@ const TIPS = [
 ]
 
 export default function GeneratePage() {
-  const { leads, result } = useGeneration()
+  const { leads, result, liveTokenBalance } = useGeneration()
   const [tokenBalance, setTokenBalance] = useState<number | null>(null)
 
   useEffect(() => {
@@ -54,8 +54,8 @@ export default function GeneratePage() {
   }, [])
 
   useEffect(() => {
-    if (result?.tokenBalance !== undefined) setTokenBalance(result.tokenBalance)
-  }, [result])
+    if (liveTokenBalance !== null) setTokenBalance(liveTokenBalance)
+  }, [liveTokenBalance])
 
   return (
     <div className="flex flex-col flex-1 gap-6">
