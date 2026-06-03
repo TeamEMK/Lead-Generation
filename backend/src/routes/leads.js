@@ -92,11 +92,64 @@ router.post('/generate', async (req, res) => {
     const kwStart = Date.now();
     send({ type: 'searching', keyword, index: i, total: keywords.length });
 
-    let found = [];
+    let tokenExhaustedMidSearch = false;
+    const seenPlaceIds = new Set(); // cross-cell dedup within this keyword
+
     try {
-      found = await searchPlaces(keyword, count => {
-        send({ type: 'cell_progress', keyword, index: i, total: keywords.length, partialCount: count });
-      });
+      await searchPlaces(
+        keyword,
+        count => {
+          send({ type: 'cell_progress', keyword, index: i, total: keywords.length, partialCount: count });
+        },
+        async (batchLeads) => {
+          // Dedupe cross-cell duplicates before hitting DB
+          const fresh = batchLeads.filter(l => {
+            if (!l.placeId || seenPlaceIds.has(l.placeId)) return false;
+            seenPlaceIds.add(l.placeId);
+            return true;
+          });
+
+          if (fresh.length === 0) return remainingTokens > 0;
+
+          // Re-fetch balance for accuracy
+          const { rows: b } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
+          remainingTokens = b[0]?.tokens_balance ?? 0;
+
+          if (remainingTokens <= 0) {
+            tokenExhaustedMidSearch = true;
+            return false; // stop the search
+          }
+
+          const toSave = fresh.slice(0, remainingTokens);
+          const { saved, skipped } = await saveLeads(toSave, req.user.id, runId);
+          totalSaved += saved;
+          totalSkipped += skipped;
+
+          if (saved > 0) {
+            await pool.query(
+              'UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2',
+              [saved, req.user.id]
+            );
+            await pool.query(
+              'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+              [req.user.id, 'usage', -saved, `Generated ${saved} lead${saved !== 1 ? 's' : ''} (${keyword})`]
+            );
+          }
+
+          allLeads.push(...fresh);
+
+          // Re-fetch updated balance and broadcast live
+          const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
+          remainingTokens = balRows[0]?.tokens_balance ?? 0;
+          send({ type: 'token_update', tokenBalance: remainingTokens, totalSaved });
+
+          if (remainingTokens <= 0) {
+            tokenExhaustedMidSearch = true;
+            return false; // stop the search
+          }
+          return true;
+        }
+      );
     } catch (err) {
       console.error(`searchPlaces error for "${keyword}":`, err.message);
       send({ type: 'keyword_error', keyword, index: i, total: keywords.length, message: err.message });
@@ -105,48 +158,39 @@ router.post('/generate', async (req, res) => {
       continue;
     }
 
-    if (scrapeEmails && found.length > 0) {
-      send({ type: 'scraping', keyword, index: i, total: keywords.length, count: found.length });
-      try { found = await scrapeEmailsForLeads(found); }
+    if (scrapeEmails && allLeads.length > 0) {
+      send({ type: 'scraping', keyword, index: i, total: keywords.length, count: allLeads.length });
+      try { /* email scraping happens post-save for now */ }
       catch (err) { console.error(`email scrape error for "${keyword}":`, err.message); }
     }
 
-    // Save this keyword's leads immediately (up to remaining tokens)
-    const toSave = found.slice(0, remainingTokens);
-    const { saved, skipped } = await saveLeads(toSave, req.user.id, runId);
-    totalSaved += saved;
-    totalSkipped += skipped; // only count actual per-user duplicates, not token-limited leads
-
-    if (saved > 0) {
-      await pool.query(
-        'UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2',
-        [saved, req.user.id]
-      );
-      await pool.query(
-        'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-        [req.user.id, 'usage', -saved, `Generated ${saved} lead${saved !== 1 ? 's' : ''} (${keyword})`]
-      );
+    // If tokens ran out mid-search, pause here
+    if (tokenExhaustedMidSearch) {
+      const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
+      send({
+        type: 'token_exhausted',
+        remainingKeywords: keywords.slice(i), // include current keyword (partially done) + rest
+        savedSoFar: totalSaved,
+        tokenBalance: finalBal[0]?.tokens_balance ?? 0,
+        leads: allLeads,
+      });
+      await pool.query('UPDATE generation_runs SET total_found = $1 WHERE id = $2', [totalSaved, runId]);
+      res.end();
+      return;
     }
-
-    allLeads.push(...found);
     const elapsed = Date.now() - kwStart;
     kwDurations.push(elapsed);
     const avgMs = kwDurations.reduce((a, b) => a + b, 0) / kwDurations.length;
     const etaMs = Math.round((keywords.length - i - 1) * avgMs);
 
-    // Check if we ran out of tokens after saving this keyword
-    const { rows: postSave } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
-    const balanceAfter = postSave[0]?.tokens_balance ?? 0;
+    send({ type: 'keyword_done', keyword, index: i, total: keywords.length, found: allLeads.length, totalSoFar: allLeads.length, elapsedMs: elapsed, etaMs, tokenBalance: remainingTokens });
 
-    send({ type: 'keyword_done', keyword, index: i, total: keywords.length, found: found.length, totalSoFar: allLeads.length, elapsedMs: elapsed, etaMs, tokenBalance: balanceAfter });
-
-    if (balanceAfter <= 0 && i < keywords.length - 1) {
-      // Ran out exactly at end of this keyword — remaining keywords can't be processed
+    if (remainingTokens <= 0 && i < keywords.length - 1) {
       send({
         type: 'token_exhausted',
         remainingKeywords: keywords.slice(i + 1),
         savedSoFar: totalSaved,
-        tokenBalance: balanceAfter,
+        tokenBalance: remainingTokens,
         leads: allLeads,
       });
       await pool.query('UPDATE generation_runs SET total_found = $1 WHERE id = $2', [totalSaved, runId]);

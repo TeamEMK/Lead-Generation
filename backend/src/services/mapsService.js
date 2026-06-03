@@ -169,13 +169,17 @@ function splitLocations(locationStr) {
     .filter(Boolean);
 }
 
-async function gridSearchForLocation(keyword, location, originalQuery, onProgress) {
+async function gridSearchForLocation(keyword, location, originalQuery, onProgress, onBatch) {
   const viewport = await getLocationViewport(location);
 
   if (!viewport) {
     console.warn(`  no viewport for "${location}", falling back to text search`);
     const results = await fetchAllPages({ textQuery: `${keyword} in ${location}`, maxResultCount: 20 });
     const mapped = results.map(l => ({ ...l, keyword: originalQuery }));
+    if (onBatch) {
+      const cont = await onBatch(mapped);
+      if (cont === false) return [];
+    }
     if (onProgress) onProgress(mapped.length);
     return mapped;
   }
@@ -190,9 +194,17 @@ async function gridSearchForLocation(keyword, location, originalQuery, onProgres
       const cellResults = await fetchAllPages(
         { textQuery: keyword, maxResultCount: 20, locationRestriction: { rectangle: cells[i] } }
       );
-      all.push(...cellResults);
-      if (cellResults.length > 0) {
-        console.log(`    cell ${i + 1}/${cells.length} → ${cellResults.length} (running total: ${all.length})`);
+      const mapped = cellResults.map(l => ({ ...l, keyword: originalQuery }));
+      all.push(...mapped);
+      if (mapped.length > 0) {
+        console.log(`    cell ${i + 1}/${cells.length} → ${mapped.length} (running total: ${all.length})`);
+      }
+      if (onBatch) {
+        const cont = await onBatch(mapped);
+        if (cont === false) {
+          console.log(`    tokens exhausted — stopping search at cell ${i + 1}/${cells.length}`);
+          break;
+        }
       }
     } catch (err) {
       console.warn(`    cell ${i + 1} failed: ${err.message}`);
@@ -201,15 +213,19 @@ async function gridSearchForLocation(keyword, location, originalQuery, onProgres
     if (i < cells.length - 1) await sleep(500);
   }
 
-  return all.map(l => ({ ...l, keyword: originalQuery }));
+  return all;
 }
 
-async function searchPlaces(query, onProgress) {
+async function searchPlaces(query, onProgress, onBatch) {
   const { keyword, locationStr } = extractLocation(query);
 
   if (!locationStr) {
     console.log(`[maps] plain search: "${query}"`);
     const results = dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
+    if (onBatch) {
+      const cont = await onBatch(results);
+      if (cont === false) return results;
+    }
     if (onProgress) onProgress(results.length);
     return results;
   }
@@ -218,18 +234,27 @@ async function searchPlaces(query, onProgress) {
   console.log(`[maps] keyword="${keyword}" locations=[${locations.join(', ')}]`);
 
   const all = [];
+  let exhausted = false;
   for (let i = 0; i < locations.length; i++) {
+    if (exhausted) break;
     const loc = locations[i];
     console.log(`[maps] searching location ${i + 1}/${locations.length}: "${loc}"`);
     try {
-      const results = await gridSearchForLocation(keyword, loc, query, count => {
-        if (onProgress) onProgress(all.length + count);
-      });
+      const results = await gridSearchForLocation(keyword, loc, query,
+        count => { if (onProgress) onProgress(all.length + count); },
+        async (batch) => {
+          if (!onBatch) return true;
+          const cont = await onBatch(batch);
+          if (cont === false) { exhausted = true; return false; }
+          return true;
+        }
+      );
       all.push(...results);
       console.log(`  "${loc}" contributed ${results.length} leads (running total: ${all.length})`);
     } catch (err) {
       console.warn(`  "${loc}" failed: ${err.message}`);
     }
+    if (exhausted) break;
     if (i < locations.length - 1) await sleep(800);
   }
 
