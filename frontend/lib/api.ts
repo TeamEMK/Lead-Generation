@@ -104,6 +104,7 @@ export interface Subscription {
     id: number
     plan_name: string
     plan_tokens: number
+    price_inr: number
     tokens_purchased: number
     amount_paid_inr: number
     status: string

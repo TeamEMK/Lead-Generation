@@ -24,10 +24,10 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
   const date = new Date(entry.created_at)
   const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const invoiceNo = entry.invoice_number ?? '—'
-  const totalPaid = entry.amount_paid_inr
-  const baseAmount = Math.round(totalPaid / 1.18)
-  const gstAmount = totalPaid - baseAmount
-  const amount = totalPaid.toLocaleString('en-IN')
+  const baseAmount = entry.price_inr
+  const gstAmount = Math.round(baseAmount * 0.18)
+  const totalAmount = baseAmount + gstAmount
+  const amount = totalAmount.toLocaleString('en-IN')
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -246,7 +246,7 @@ function InvoiceModal({ entry, onClose }: { entry: SubEntry; onClose: () => void
                     {entry.tokens_purchased.toLocaleString('en-IN')}
                   </td>
                   <td className="px-4 py-3.5 text-right font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                    ₹{entry.amount_paid_inr.toLocaleString('en-IN')}
+                    ₹{entry.price_inr.toLocaleString('en-IN')}
                   </td>
                 </tr>
               </tbody>
@@ -255,20 +255,20 @@ function InvoiceModal({ entry, onClose }: { entry: SubEntry; onClose: () => void
                   <td className="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">Subtotal (excl. GST)</td>
                   <td />
                   <td className="px-4 py-2 text-right text-xs text-slate-400 dark:text-slate-500">
-                    ₹{Math.round(entry.amount_paid_inr / 1.18).toLocaleString('en-IN')}
+                    ₹{entry.price_inr.toLocaleString('en-IN')}
                   </td>
                 </tr>
                 <tr className="border-t border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02]">
                   <td className="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">GST (18%)</td>
                   <td />
                   <td className="px-4 py-2 text-right text-xs text-slate-400 dark:text-slate-500">
-                    ₹{(entry.amount_paid_inr - Math.round(entry.amount_paid_inr / 1.18)).toLocaleString('en-IN')}
+                    ₹{Math.round(entry.price_inr * 0.18).toLocaleString('en-IN')}
                   </td>
                 </tr>
                 <tr className="border-t-2 border-brand-200 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/10">
                   <td colSpan={2} className="px-4 py-3 text-sm font-bold text-slate-800 dark:text-slate-200">Total</td>
                   <td className="px-4 py-3 text-right text-base font-extrabold text-brand-600 dark:text-brand-400">
-                    ₹{entry.amount_paid_inr.toLocaleString('en-IN')}
+                    ₹{(entry.price_inr + Math.round(entry.price_inr * 0.18)).toLocaleString('en-IN')}
                   </td>
                 </tr>
               </tfoot>
