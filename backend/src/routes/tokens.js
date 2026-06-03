@@ -137,8 +137,7 @@ router.post('/purchase', async (req, res) => {
     const dd = String(now.getDate()).padStart(2, '0');
     const { rows: cntRows } = await client.query(
       `SELECT COUNT(*) AS cnt FROM subscriptions
-       WHERE EXTRACT(YEAR FROM created_at) = $1 AND EXTRACT(MONTH FROM created_at) = $2
-       FOR UPDATE`,
+       WHERE EXTRACT(YEAR FROM created_at) = $1 AND EXTRACT(MONTH FROM created_at) = $2`,
       [yyyy, parseInt(mm)]
     );
     const counter = String(parseInt(cntRows[0].cnt) + 1).padStart(3, '0');
