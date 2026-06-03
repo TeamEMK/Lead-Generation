@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   History, RefreshCw, Tag, Hash, Calendar, ChevronDown, ChevronRight,
   Download, Phone, Globe, Mail, MapPin, Loader2, Filter,
+  CheckCircle2, Loader, PauseCircle, AlertCircle,
 } from 'lucide-react'
 import { fetchHistory, fetchRunLeads, type GenerationRun, type Lead } from '../../lib/api'
 
@@ -102,6 +103,29 @@ function RunLeadsTable({ leads }: { leads: Lead[] }) {
   )
 }
 
+function StatusBadge({ status }: { status: GenerationRun['status'] }) {
+  if (status === 'running') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30">
+      <Loader className="w-2.5 h-2.5 animate-spin" /> Running
+    </span>
+  )
+  if (status === 'paused') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+      <PauseCircle className="w-2.5 h-2.5" /> Paused — tokens ran out
+    </span>
+  )
+  if (status === 'error') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
+      <AlertCircle className="w-2.5 h-2.5" /> Error
+    </span>
+  )
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
+      <CheckCircle2 className="w-2.5 h-2.5" /> Done
+    </span>
+  )
+}
+
 function RunRow({ run, index, total }: { run: GenerationRun; index: number; total: number }) {
   const [expanded, setExpanded] = useState(false)
   const [leads, setLeads] = useState<Lead[] | null>(null)
@@ -145,13 +169,14 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 ml-5">{timeAgo(run.created_at)}</p>
         </td>
         <td className="px-5 py-3.5">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 mb-1.5">
             {run.keywords.map((kw, i) => (
               <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-50 dark:bg-navy-500/10 text-navy-700 dark:text-navy-400 border border-navy-100 dark:border-navy-500/20">
                 <Tag className="w-2.5 h-2.5" />{kw}
               </span>
             ))}
           </div>
+          <StatusBadge status={run.status ?? 'done'} />
         </td>
         <td className="px-5 py-3.5 text-right">
           <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">

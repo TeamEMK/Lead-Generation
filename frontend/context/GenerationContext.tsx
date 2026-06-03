@@ -67,12 +67,17 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     return () => { readerRef.current?.cancel().catch(() => {}) }
   }, [])
 
-  const _run = useCallback(async (keywords: string[], scrapeEmails: boolean) => {
-    setLoading(true)
-    setError(null)
-    setPaused(null)
-    setProgress(null)
-    setLiveTokenBalance(null)
+  const _run = useCallback(async (keywords: string[], scrapeEmails: boolean, retryCount = 0) => {
+    if (retryCount === 0) {
+      setLoading(true)
+      setError(null)
+      setPaused(null)
+      setProgress(null)
+      setLiveTokenBalance(null)
+    }
+
+    let shouldRetry = false
+    let retryDelaySec = 0
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -148,10 +153,28 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         }
       }
     } catch (err: any) {
-      if (err.name !== 'AbortError') setError(err.message)
+      if (err.name === 'AbortError') {
+        // intentional cancel — don't retry
+      } else if (!err.message?.startsWith('INSUFFICIENT_TOKENS') && retryCount < 3) {
+        // Network/transient error — retry with backoff
+        const delaySec = Math.pow(2, retryCount) // 1s, 2s, 4s
+        setError(`Network issue — retrying in ${delaySec}s… (attempt ${retryCount + 1}/3)`)
+        shouldRetry = true
+        retryDelaySec = delaySec
+      } else {
+        setError(err.message)
+      }
     } finally {
-      setLoading(false)
-      readerRef.current = null
+      if (!shouldRetry) {
+        setLoading(false)
+        readerRef.current = null
+      }
+    }
+
+    if (shouldRetry) {
+      await new Promise(r => setTimeout(r, retryDelaySec * 1000))
+      setError(null)
+      return _run(keywords, scrapeEmails, retryCount + 1)
     }
   }, [])
 

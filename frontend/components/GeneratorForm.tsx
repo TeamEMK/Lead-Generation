@@ -21,9 +21,16 @@ function fmtTime(ms: number) {
 export default function GeneratorForm() {
   const router = useRouter()
   const { loading, elapsed, progress, result, paused, error, generate, resume } = useGeneration()
-  const [keywords, setKeywords] = useState('')
+  const [keywords, setKeywords] = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('savedKeywords') ?? '' : ''
+  )
   const [scrapeEmails, setScrapeEmails] = useState(false)
   const [pausedBalance, setPausedBalance] = useState<number | null>(null)
+
+  // Persist keywords across refresh
+  useEffect(() => {
+    localStorage.setItem('savedKeywords', keywords)
+  }, [keywords])
 
   // When paused, check token balance — detect if user renewed in another tab
   useEffect(() => {

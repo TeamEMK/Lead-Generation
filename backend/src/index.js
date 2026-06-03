@@ -53,9 +53,11 @@ async function initDb() {
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       keywords TEXT[] NOT NULL DEFAULT '{}',
       total_found INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'done',
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE generation_runs ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'done'`);
   // Global deduplicated lead data — shared across users
   await pool.query(`
     CREATE TABLE IF NOT EXISTS leads (

@@ -60,7 +60,7 @@ router.post('/generate', async (req, res) => {
 
   // Create run record for this session
   const runRes = await pool.query(
-    'INSERT INTO generation_runs (user_id, keywords, total_found) VALUES ($1, $2, $3) RETURNING id',
+    `INSERT INTO generation_runs (user_id, keywords, total_found, status) VALUES ($1, $2, $3, 'running') RETURNING id`,
     [req.user.id, keywords, 0]
   );
   const runId = runRes.rows[0].id;
@@ -187,7 +187,7 @@ router.post('/generate', async (req, res) => {
         tokenBalance: finalBal[0]?.tokens_balance ?? 0,
         leads: allLeads,
       });
-      await pool.query('UPDATE generation_runs SET total_found = $1 WHERE id = $2', [totalSaved, runId]);
+      await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'paused' WHERE id = $2`, [totalSaved, runId]);
       res.end();
       return;
     }
@@ -206,7 +206,7 @@ router.post('/generate', async (req, res) => {
         tokenBalance: remainingTokens,
         leads: allLeads,
       });
-      await pool.query('UPDATE generation_runs SET total_found = $1 WHERE id = $2', [totalSaved, runId]);
+      await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'paused' WHERE id = $2`, [totalSaved, runId]);
       res.end();
       return;
     }
@@ -214,7 +214,7 @@ router.post('/generate', async (req, res) => {
     if (i < keywords.length - 1) await sleep(KEYWORD_DELAY_MS);
   }
 
-  await pool.query('UPDATE generation_runs SET total_found = $1 WHERE id = $2', [totalSaved, runId]);
+  await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'done' WHERE id = $2`, [totalSaved, runId]);
 
   const { rows: finalBalRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
   const newBalance = finalBalRows[0]?.tokens_balance ?? 0;
@@ -256,7 +256,7 @@ router.get('/', async (req, res) => {
 router.get('/history', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, keywords, total_found, created_at FROM generation_runs WHERE user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, keywords, total_found, status, created_at FROM generation_runs WHERE user_id = $1 ORDER BY created_at DESC',
       [req.user.id]
     );
     res.json({ runs: rows });
@@ -271,7 +271,7 @@ router.get('/history/:runId', async (req, res) => {
     const runId = parseInt(req.params.runId, 10);
     // Verify ownership
     const { rows: run } = await pool.query(
-      'SELECT id, keywords, total_found, created_at FROM generation_runs WHERE id = $1 AND user_id = $2',
+      'SELECT id, keywords, total_found, status, created_at FROM generation_runs WHERE id = $1 AND user_id = $2',
       [runId, req.user.id]
     );
     if (!run.length) return res.status(404).json({ error: 'Run not found' });
