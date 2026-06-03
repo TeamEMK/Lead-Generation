@@ -10,22 +10,24 @@ import { useAuth } from '../../context/AuthContext'
 
 type SubEntry = Subscription['subscriptions'][number]
 
-// Company details — update when available
 const COMPANY = {
-  name: 'JM Marketing',
+  name: 'JAI MARKETING',
   website: 'e-marketing.io',
   email: 'info@e-marketing.io',
   phone: '+91-9602694444',
-  address: '8/10, Shaheed Amit Bhardwaj Marg, Malviya Nagar, Jaipur - 302017 (Raj)',
-  gstin: 'GSTIN: [ADD GST NUMBER]',
-  logo: null as string | null, // set to image URL when available
+  address: 'H-3, Globe House South Wing Transport Nagar, Jaipur - 302004 (Raj)',
+  gstin: 'GSTIN: 08AAPFJ6061M1ZQ',
+  logo: null as string | null,
 }
 
 function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: string): string {
   const date = new Date(entry.created_at)
   const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const invoiceNo = entry.invoice_number ?? '—'
-  const amount = entry.amount_paid_inr.toLocaleString('en-IN')
+  const totalPaid = entry.amount_paid_inr
+  const baseAmount = Math.round(totalPaid / 1.18)
+  const gstAmount = totalPaid - baseAmount
+  const amount = totalPaid.toLocaleString('en-IN')
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -136,7 +138,7 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
             <div class="sub">GMB Leads Extractor · 1 token = 1 lead saved · e-marketing.io</div>
           </td>
           <td>${entry.tokens_purchased.toLocaleString('en-IN')}</td>
-          <td>₹${amount}</td>
+          <td>₹${baseAmount.toLocaleString('en-IN')}</td>
         </tr>
       </tbody>
     </table>
@@ -145,8 +147,8 @@ function generateInvoiceHTML(entry: SubEntry, userName: string, userEmail: strin
   <!-- Totals -->
   <div style="display:flex;justify-content:flex-end">
     <div class="totals">
-      <div class="totals-row sub-row"><span>Subtotal</span><span>₹${amount}</span></div>
-      <div class="totals-row sub-row"><span>GST (0%)</span><span>₹0</span></div>
+      <div class="totals-row sub-row"><span>Subtotal</span><span>₹${baseAmount.toLocaleString('en-IN')}</span></div>
+      <div class="totals-row sub-row"><span>GST (18%)</span><span>₹${gstAmount.toLocaleString('en-IN')}</span></div>
       <div class="totals-row"><span>Total</span><span>₹${amount}</span></div>
     </div>
   </div>
@@ -250,9 +252,18 @@ function InvoiceModal({ entry, onClose }: { entry: SubEntry; onClose: () => void
               </tbody>
               <tfoot>
                 <tr className="border-t border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02]">
-                  <td className="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">GST (0%)</td>
+                  <td className="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">Subtotal (excl. GST)</td>
                   <td />
-                  <td className="px-4 py-2 text-right text-xs text-slate-400 dark:text-slate-500">₹0</td>
+                  <td className="px-4 py-2 text-right text-xs text-slate-400 dark:text-slate-500">
+                    ₹{Math.round(entry.amount_paid_inr / 1.18).toLocaleString('en-IN')}
+                  </td>
+                </tr>
+                <tr className="border-t border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02]">
+                  <td className="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">GST (18%)</td>
+                  <td />
+                  <td className="px-4 py-2 text-right text-xs text-slate-400 dark:text-slate-500">
+                    ₹{(entry.amount_paid_inr - Math.round(entry.amount_paid_inr / 1.18)).toLocaleString('en-IN')}
+                  </td>
                 </tr>
                 <tr className="border-t-2 border-brand-200 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/10">
                   <td colSpan={2} className="px-4 py-3 text-sm font-bold text-slate-800 dark:text-slate-200">Total</td>
@@ -335,6 +346,7 @@ function PricingModal({ onClose, onPurchase }: { onClose: () => void; onPurchase
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">{plan.name}</p>
                   <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">₹{plan.price_inr.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">+ 18% GST = ₹{(Math.round(plan.price_inr * 1.18)).toLocaleString()}</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-brand-600 dark:text-brand-400">
                   <Coins className="w-4 h-4" />{plan.tokens.toLocaleString()} tokens
@@ -343,7 +355,7 @@ function PricingModal({ onClose, onPurchase }: { onClose: () => void; onPurchase
                 <button onClick={() => handleBuy(plan)} disabled={purchasing !== null}
                   className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 disabled:opacity-60' : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-60'}`}>
                   {purchasing === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                  {purchasing === plan.id ? 'Processing…' : 'Buy Now'}
+                  {purchasing === plan.id ? 'Processing…' : `Pay ₹${(Math.round(plan.price_inr * 1.18)).toLocaleString()}`}
                 </button>
               </div>
             ))}

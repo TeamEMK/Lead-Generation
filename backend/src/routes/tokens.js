@@ -142,31 +142,25 @@ router.post('/purchase', async (req, res) => {
       [req.user.id]
     );
 
-    // First activation: ADD plan tokens to existing balance (preserves free 30 tokens)
-    // Renewal/upgrade: REPLACE balance (old plan tokens don't carry forward)
-    const { rows: prevSub } = await pool.query(
-      `SELECT id FROM subscriptions WHERE user_id = $1 AND status = 'expired' LIMIT 1`,
-      [req.user.id]
-    );
-    const isFirstPlan = prevSub.length === 0;
+    // Always add new plan tokens to existing balance — remaining tokens carry over on renewal
     await pool.query(
-      isFirstPlan
-        ? 'UPDATE users SET tokens_balance = tokens_balance + $1, active_plan_id = $2 WHERE id = $3'
-        : 'UPDATE users SET tokens_balance = $1, active_plan_id = $2 WHERE id = $3',
+      'UPDATE users SET tokens_balance = tokens_balance + $1, active_plan_id = $2 WHERE id = $3',
       [plan.tokens, plan.id, req.user.id]
     );
 
     const expiresAt = new Date(now);
     expiresAt.setMonth(expiresAt.getMonth() + 1);
 
+    const amountWithGst = Math.round(plan.price_inr * 1.18);
+
     await pool.query(
       `INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [req.user.id, plan.id, plan.tokens, plan.price_inr, invoiceNumber, expiresAt]
+      [req.user.id, plan.id, plan.tokens, amountWithGst, invoiceNumber, expiresAt]
     );
     await pool.query(
       'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-      [req.user.id, 'purchase', plan.tokens, `${plan.name} plan activated — ₹${plan.price_inr} · expires ${expiresAt.toLocaleDateString('en-IN')}`]
+      [req.user.id, 'purchase', plan.tokens, `${plan.name} plan activated — ₹${amountWithGst} (incl. GST) · expires ${expiresAt.toLocaleDateString('en-IN')}`]
     );
 
     const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);

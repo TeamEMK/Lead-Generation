@@ -44,6 +44,10 @@ function SelectPlanContent() {
       .finally(() => setLoading(false))
   }, [searchParams])
 
+  const basePrice = selectedPlan?.price_inr ?? 0
+  const gstAmount = Math.round(basePrice * 0.18)
+  const totalAmount = basePrice + gstAmount
+
   async function handlePay() {
     if (!selectedPlan) return
     setPaying(true)
@@ -228,11 +232,21 @@ function SelectPlanContent() {
                     <p className="text-xs text-slate-400 dark:text-slate-500">{selectedPlan?.tokens.toLocaleString()} tokens</p>
                   </div>
                 </div>
-                <p className="font-bold text-slate-900 dark:text-white">₹{selectedPlan?.price_inr.toLocaleString()}</p>
+                <p className="font-bold text-slate-900 dark:text-white">₹{basePrice.toLocaleString()}</p>
               </div>
-              <div className="border-t border-slate-100 dark:border-white/[0.06] pt-3 flex items-center justify-between">
-                <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
-                <p className="text-xl font-extrabold text-slate-900 dark:text-white">₹{selectedPlan?.price_inr.toLocaleString()}</p>
+              <div className="border-t border-slate-100 dark:border-white/[0.06] pt-3 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <p className="text-slate-500 dark:text-slate-400">Subtotal</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-300">₹{basePrice.toLocaleString()}</p>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <p className="text-slate-500 dark:text-slate-400">GST (18%)</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-300">₹{gstAmount.toLocaleString()}</p>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/[0.06]">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Total</p>
+                  <p className="text-xl font-extrabold text-slate-900 dark:text-white">₹{totalAmount.toLocaleString()}</p>
+                </div>
               </div>
             </div>
 
@@ -255,7 +269,7 @@ function SelectPlanContent() {
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-sm shadow-xl shadow-brand-500/20 transition-all disabled:opacity-60"
             >
               {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-              {paying ? 'Processing…' : `Confirm & Pay ₹${selectedPlan?.price_inr.toLocaleString()}`}
+              {paying ? 'Processing…' : `Confirm & Pay ₹${totalAmount.toLocaleString()}`}
             </button>
 
             <div className="flex items-center justify-center gap-4 mt-4">
