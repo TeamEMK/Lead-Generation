@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail,
-  Clock, Coins, PauseCircle, PlayCircle, ShoppingCart, Tag,
+  Clock, Coins, PauseCircle, Tag, ArrowRight,
 } from 'lucide-react'
 import { useGeneration } from '../context/GenerationContext'
-import { fetchPlans, purchasePlan, type Plan } from '../lib/api'
 
 function fmtTime(ms: number) {
   const s = Math.ceil(ms / 1000)
@@ -17,54 +17,11 @@ function fmtTime(ms: number) {
   return rem > 0 ? `${m}m ${rem}s` : `${m}m`
 }
 
-function PlanCard({ plan, onBuy, buying }: { plan: Plan; onBuy: () => void; buying: boolean }) {
-  return (
-    <div className={`relative rounded-xl border p-4 flex flex-col gap-3 ${
-      plan.popular
-        ? 'border-brand-400 dark:border-brand-500/50 bg-brand-50 dark:bg-brand-500/10'
-        : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02]'
-    }`}>
-      {plan.popular && (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-brand-600 text-white tracking-wider">
-          BEST VALUE
-        </span>
-      )}
-      <div>
-        <p className={`text-xs font-bold uppercase tracking-widest ${plan.popular ? 'text-brand-500' : 'text-slate-400 dark:text-slate-500'}`}>{plan.name}</p>
-        <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">₹{plan.price_inr.toLocaleString()}</p>
-      </div>
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-brand-600 dark:text-brand-400">
-        <Coins className="w-3.5 h-3.5" />{plan.tokens.toLocaleString()} tokens
-      </div>
-      <p className="text-xs text-slate-400 dark:text-slate-500">₹{plan.price_per_token}/token</p>
-      <button
-        onClick={onBuy}
-        disabled={buying}
-        className={`w-full py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 ${
-          plan.popular
-            ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-500/20'
-            : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100'
-        }`}
-      >
-        {buying ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
-        {buying ? 'Processing…' : 'Buy Now'}
-      </button>
-    </div>
-  )
-}
-
 export default function GeneratorForm() {
-  const { loading, elapsed, progress, result, paused, error, generate, resume } = useGeneration()
+  const router = useRouter()
+  const { loading, elapsed, progress, result, paused, error, generate } = useGeneration()
   const [keywords, setKeywords] = useState('')
   const [scrapeEmails, setScrapeEmails] = useState(false)
-
-  // Plan purchase state (shown when paused)
-  const [plans, setPlans] = useState<Plan[]>([])
-  const [plansLoading, setPlansLoading] = useState(false)
-  const [plansLoaded, setPlansLoaded] = useState(false)
-  const [purchasing, setPurchasing] = useState<number | null>(null)
-  const [purchaseError, setPurchaseError] = useState<string | null>(null)
-  const [purchasedBalance, setPurchasedBalance] = useState<number | null>(null)
 
   const keywordList = keywords.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
   const keywordCount = keywordList.length
@@ -72,40 +29,12 @@ export default function GeneratorForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (keywordList.length === 0) return
-    setPurchasedBalance(null)
     generate(keywordList, scrapeEmails)
-  }
-
-  async function loadPlans() {
-    if (plansLoaded) return
-    setPlansLoading(true)
-    try {
-      const p = await fetchPlans()
-      setPlans(p)
-      setPlansLoaded(true)
-    } finally {
-      setPlansLoading(false)
-    }
-  }
-
-  async function handleBuy(plan: Plan) {
-    setPurchasing(plan.id)
-    setPurchaseError(null)
-    try {
-      const res = await purchasePlan(plan.id)
-      setPurchasedBalance(res.balance)
-    } catch (e: any) {
-      setPurchaseError(e.message)
-    } finally {
-      setPurchasing(null)
-    }
   }
 
   const barPct = progress
     ? Math.min(((progress.index + (progress.phase === 'done' ? 1 : 0.5)) / progress.total) * 100, 98)
     : 0
-
-  const canResume = paused && paused.remainingKeywords.length > 0 && purchasedBalance !== null && purchasedBalance > 0
 
   return (
     <form id="generate-form" onSubmit={handleSubmit} className="flex flex-col flex-1 gap-5">
@@ -228,75 +157,17 @@ export default function GeneratorForm() {
             </div>
           </div>
 
-          {/* Buy tokens section */}
+          {/* Redirect to billing */}
           <div className="p-4">
-            {purchasedBalance !== null ? (
-              /* ── Purchased — show resume ── */
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Purchase successful! {purchasedBalance.toLocaleString()} tokens now available.
-                </div>
-                <button
-                  type="button"
-                  onClick={resume}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-bold shadow-md shadow-emerald-500/20 transition-all"
-                >
-                  <PlayCircle className="w-4 h-4" />
-                  Resume Generation ({paused.remainingKeywords.length} keyword{paused.remainingKeywords.length !== 1 ? 's' : ''} left)
-                </button>
-              </div>
-            ) : (
-              /* ── Buy tokens ── */
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Buy tokens to continue</p>
-                  {!plansLoaded && (
-                    <button
-                      type="button"
-                      onClick={loadPlans}
-                      className="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline"
-                    >
-                      {plansLoading ? 'Loading…' : 'Show plans'}
-                    </button>
-                  )}
-                </div>
-
-                {purchaseError && (
-                  <p className="text-xs text-rose-600 dark:text-rose-400">{purchaseError}</p>
-                )}
-
-                {plansLoading && (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
-                  </div>
-                )}
-
-                {plansLoaded && plans.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1">
-                    {plans.map(plan => (
-                      <PlanCard
-                        key={plan.id}
-                        plan={plan}
-                        onBuy={() => handleBuy(plan)}
-                        buying={purchasing === plan.id}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {!plansLoaded && !plansLoading && (
-                  <button
-                    type="button"
-                    onClick={loadPlans}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-white dark:bg-white/[0.05] text-amber-700 dark:text-amber-300 text-sm font-semibold hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Buy more tokens to continue
-                  </button>
-                )}
-              </div>
-            )}
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">Renew your plan to continue</p>
+            <button
+              type="button"
+              onClick={() => router.push('/select-plan')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white text-sm font-bold shadow-md shadow-brand-500/20 transition-all"
+            >
+              Renew Plan to Continue
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
