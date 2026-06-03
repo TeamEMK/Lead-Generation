@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   CreditCard, Coins, Zap, CheckCircle2, RefreshCw,
   TrendingDown, TrendingUp, Calendar, X, Loader2, Star, FileText, Printer,
@@ -371,10 +372,10 @@ function fmt(dateStr: string) {
 }
 
 export default function SubscriptionPage() {
+  const router = useRouter()
   const [sub, setSub] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showRenew, setShowRenew] = useState(false)
   const [invoiceEntry, setInvoiceEntry] = useState<SubEntry | null>(null)
 
   const load = useCallback(async () => {
@@ -408,7 +409,7 @@ export default function SubscriptionPage() {
           <button onClick={load} disabled={loading} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 transition-all shadow-sm">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
-          <button onClick={() => setShowRenew(true)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 transition-all">
+          <button onClick={() => router.push('/select-plan')} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 transition-all">
             <Zap className="w-3.5 h-3.5" /> Renew Plan
           </button>
         </div>
@@ -475,7 +476,7 @@ export default function SubscriptionPage() {
                 </p>
               )}
               {!sub?.active_plan && (
-                <button onClick={() => setShowRenew(true)} className="mt-4 w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold transition-all">
+                <button onClick={() => router.push('/select-plan')} className="mt-4 w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold transition-all">
                   Choose a plan to get started
                 </button>
               )}
@@ -588,13 +589,6 @@ export default function SubscriptionPage() {
 
       {invoiceEntry && (
         <InvoiceModal entry={invoiceEntry} onClose={() => setInvoiceEntry(null)} />
-      )}
-
-      {showRenew && (
-        <PricingModal
-          onClose={() => setShowRenew(false)}
-          onPurchase={(updated) => { setSub(updated); setShowRenew(false) }}
-        />
       )}
     </div>
   )
