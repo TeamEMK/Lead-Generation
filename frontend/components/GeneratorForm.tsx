@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail,
-  Clock, Coins, PauseCircle, Tag, ArrowRight,
+  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight,
 } from 'lucide-react'
 import { useGeneration } from '../context/GenerationContext'
+import { fetchTokenBalance } from '../lib/api'
 
 function fmtTime(ms: number) {
   const s = Math.ceil(ms / 1000)
@@ -19,9 +20,19 @@ function fmtTime(ms: number) {
 
 export default function GeneratorForm() {
   const router = useRouter()
-  const { loading, elapsed, progress, result, paused, error, generate } = useGeneration()
+  const { loading, elapsed, progress, result, paused, error, generate, resume } = useGeneration()
   const [keywords, setKeywords] = useState('')
   const [scrapeEmails, setScrapeEmails] = useState(false)
+  const [pausedBalance, setPausedBalance] = useState<number | null>(null)
+
+  // When paused, check token balance — detect if user renewed in another tab
+  useEffect(() => {
+    if (!paused) { setPausedBalance(null); return }
+    const check = () => fetchTokenBalance().then(setPausedBalance).catch(() => {})
+    check()
+    window.addEventListener('focus', check)
+    return () => window.removeEventListener('focus', check)
+  }, [paused])
 
   const keywordList = keywords.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
   const keywordCount = keywordList.length
@@ -157,17 +168,36 @@ export default function GeneratorForm() {
             </div>
           </div>
 
-          {/* Redirect to billing */}
+          {/* Resume or Renew */}
           <div className="p-4">
-            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">Renew your plan to continue</p>
-            <button
-              type="button"
-              onClick={() => router.push('/select-plan')}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white text-sm font-bold shadow-md shadow-brand-500/20 transition-all"
-            >
-              Renew Plan to Continue
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {pausedBalance !== null && pausedBalance > 0 ? (
+              <>
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-xs font-semibold mb-3">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {pausedBalance.toLocaleString()} tokens available — ready to resume
+                </div>
+                <button
+                  type="button"
+                  onClick={resume}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm font-bold shadow-md shadow-emerald-500/20 transition-all"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  Resume Generation ({paused.remainingKeywords.length} keyword{paused.remainingKeywords.length !== 1 ? 's' : ''} left)
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">Renew your plan to continue</p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/select-plan')}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white text-sm font-bold shadow-md shadow-brand-500/20 transition-all"
+                >
+                  Renew Plan to Continue
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

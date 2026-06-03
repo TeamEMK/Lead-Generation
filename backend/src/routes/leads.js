@@ -132,7 +132,7 @@ router.post('/generate', async (req, res) => {
             );
           }
 
-          allLeads.push(...fresh);
+          allLeads.push(...toSave); // only track leads that were saved (token-limited)
 
           const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
           remainingTokens = balRows[0]?.tokens_balance ?? 0;
