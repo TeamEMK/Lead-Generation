@@ -93,7 +93,8 @@ router.post('/generate', async (req, res) => {
     send({ type: 'searching', keyword, index: i, total: keywords.length });
 
     let tokenExhaustedMidSearch = false;
-    const seenPlaceIds = new Set(); // cross-cell dedup within this keyword
+    const seenPlaceIds = new Set();
+    let kwSaved = 0; // accumulate per-keyword saves for one transaction log entry
 
     try {
       await searchPlaces(
@@ -102,7 +103,6 @@ router.post('/generate', async (req, res) => {
           send({ type: 'cell_progress', keyword, index: i, total: keywords.length, partialCount: count });
         },
         async (batchLeads) => {
-          // Dedupe cross-cell duplicates before hitting DB
           const fresh = batchLeads.filter(l => {
             if (!l.placeId || seenPlaceIds.has(l.placeId)) return false;
             seenPlaceIds.add(l.placeId);
@@ -111,41 +111,36 @@ router.post('/generate', async (req, res) => {
 
           if (fresh.length === 0) return remainingTokens > 0;
 
-          // Re-fetch balance for accuracy
           const { rows: b } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
           remainingTokens = b[0]?.tokens_balance ?? 0;
 
           if (remainingTokens <= 0) {
             tokenExhaustedMidSearch = true;
-            return false; // stop the search
+            return false;
           }
 
           const toSave = fresh.slice(0, remainingTokens);
           const { saved, skipped } = await saveLeads(toSave, req.user.id, runId);
           totalSaved += saved;
           totalSkipped += skipped;
+          kwSaved += saved;
 
           if (saved > 0) {
             await pool.query(
               'UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2',
               [saved, req.user.id]
             );
-            await pool.query(
-              'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-              [req.user.id, 'usage', -saved, `Generated ${saved} lead${saved !== 1 ? 's' : ''} (${keyword})`]
-            );
           }
 
           allLeads.push(...fresh);
 
-          // Re-fetch updated balance and broadcast live
           const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
           remainingTokens = balRows[0]?.tokens_balance ?? 0;
           send({ type: 'token_update', tokenBalance: remainingTokens, totalSaved });
 
           if (remainingTokens <= 0) {
             tokenExhaustedMidSearch = true;
-            return false; // stop the search
+            return false;
           }
           return true;
         }
@@ -162,6 +157,14 @@ router.post('/generate', async (req, res) => {
       send({ type: 'scraping', keyword, index: i, total: keywords.length, count: allLeads.length });
       try { /* email scraping happens post-save for now */ }
       catch (err) { console.error(`email scrape error for "${keyword}":`, err.message); }
+    }
+
+    // One transaction log entry for the entire keyword (not per cell)
+    if (kwSaved > 0) {
+      await pool.query(
+        'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+        [req.user.id, 'usage', -kwSaved, `Generated ${kwSaved} lead${kwSaved !== 1 ? 's' : ''} for "${keyword}"`]
+      );
     }
 
     // If tokens ran out mid-search, pause here
