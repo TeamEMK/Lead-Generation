@@ -6,7 +6,7 @@ import {
   CreditCard, Coins, Zap, CheckCircle2, RefreshCw,
   TrendingDown, TrendingUp, Calendar, X, Loader2, Star, FileText, Printer,
 } from 'lucide-react'
-import { fetchSubscription, fetchPlans, purchasePlan, type Subscription, type Plan } from '../../lib/api'
+import { fetchSubscription, fetchPlans, purchasePlan, createRazorpayOrder, type Subscription, type Plan } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 
 type SubEntry = Subscription['subscriptions'][number]
@@ -309,18 +309,45 @@ function PricingModal({ onClose, onPurchase }: { onClose: () => void; onPurchase
 
   useEffect(() => {
     fetchPlans().then(setPlans).catch(() => setError('Failed to load plans')).finally(() => setLoading(false))
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => { document.body.removeChild(script) }
   }, [])
 
   async function handleBuy(plan: Plan) {
     setPurchasing(plan.id)
     setError(null)
     try {
-      await purchasePlan(plan.id)
-      const updated = await fetchSubscription()
-      onPurchase(updated)
+      const order = await createRazorpayOrder(plan.id)
+      setPurchasing(null)
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: order.amount * 100,
+        currency: order.currency,
+        name: 'e-Marketing',
+        description: `${plan.name} Plan — ${plan.tokens.toLocaleString()} tokens`,
+        order_id: order.orderId,
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          setPurchasing(plan.id)
+          try {
+            await purchasePlan(plan.id, response)
+            const updated = await fetchSubscription()
+            onPurchase(updated)
+          } catch (e: any) {
+            setError(e.message)
+            setPurchasing(null)
+          }
+        },
+        theme: { color: '#EE9535' },
+        modal: { ondismiss: () => setPurchasing(null) },
+      }
+
+      new (window as any).Razorpay(options).open()
     } catch (e: any) {
       setError(e.message)
-    } finally {
       setPurchasing(null)
     }
   }
