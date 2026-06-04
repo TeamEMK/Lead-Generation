@@ -4,12 +4,18 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Zap, CheckCircle2, Coins, Loader2, ArrowRight,
-  CreditCard, Lock, Shield,
+  CheckCircle2, Coins, Loader2, ArrowRight,
+  Lock, Shield,
 } from 'lucide-react'
-import { fetchPlans, purchasePlan, type Plan } from '../../lib/api'
+import { fetchPlans, purchasePlan, createRazorpayOrder, type Plan } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 
 type Step = 'select' | 'pay'
+
+interface PendingSignup {
+  name: string; email: string; password: string
+  phone: string; city: string; businessName: string; gst?: string
+}
 
 export default function SelectPlanPage() {
   return (
@@ -22,12 +28,30 @@ export default function SelectPlanPage() {
 function SelectPlanContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { signup } = useAuth()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [step, setStep] = useState<Step>('select')
   const [paying, setPaying] = useState(false)
+  const [skipping, setSkipping] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null)
+
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => { document.body.removeChild(script) }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('pending_signup')
+      if (stored) setPendingSignup(JSON.parse(stored))
+    } catch {}
+  }, [])
 
   useEffect(() => {
     const planIdParam = searchParams.get('planId')
@@ -53,12 +77,64 @@ function SelectPlanContent() {
     setPaying(true)
     setError(null)
     try {
-      await purchasePlan(selectedPlan.id)
-      router.push('/dashboard')
+      // New signup: create account now, right before payment
+      if (pendingSignup) {
+        await signup(
+          pendingSignup.name, pendingSignup.email, pendingSignup.password,
+          pendingSignup.phone, pendingSignup.city, pendingSignup.businessName, pendingSignup.gst
+        )
+        sessionStorage.removeItem('pending_signup')
+        setPendingSignup(null)
+      }
+
+      const order = await createRazorpayOrder(selectedPlan.id)
+      setPaying(false)
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: order.amount * 100,
+        currency: order.currency,
+        name: 'e-Marketing',
+        description: `${selectedPlan.name} Plan — ${selectedPlan.tokens.toLocaleString()} tokens`,
+        order_id: order.orderId,
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          setPaying(true)
+          try {
+            await purchasePlan(selectedPlan.id, response)
+            router.push('/dashboard')
+          } catch (e: any) {
+            setError(e.message)
+            setPaying(false)
+          }
+        },
+        theme: { color: '#EE9535' },
+        modal: { ondismiss: () => setPaying(false) },
+      }
+
+      new (window as any).Razorpay(options).open()
     } catch (e: any) {
       setError(e.message)
       setPaying(false)
     }
+  }
+
+  async function handleSkip() {
+    setError(null)
+    if (pendingSignup) {
+      setSkipping(true)
+      try {
+        await signup(
+          pendingSignup.name, pendingSignup.email, pendingSignup.password,
+          pendingSignup.phone, pendingSignup.city, pendingSignup.businessName, pendingSignup.gst
+        )
+        sessionStorage.removeItem('pending_signup')
+      } catch (e: any) {
+        setError(e.message)
+        setSkipping(false)
+        return
+      }
+    }
+    router.push('/dashboard')
   }
 
   return (
@@ -200,9 +276,13 @@ function SelectPlanContent() {
                     Continue with {selectedPlan?.name}
                     <ArrowRight className="w-4 h-4" />
                   </button>
-                  <Link href="/dashboard" className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                    Skip for now — I'll recharge later
-                  </Link>
+                  <button
+                    onClick={handleSkip}
+                    disabled={skipping}
+                    className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
+                  >
+                    {skipping ? 'Creating account…' : 'Skip for now — I\'ll recharge later'}
+                  </button>
                 </div>
               </>
             )}
@@ -215,7 +295,7 @@ function SelectPlanContent() {
                 Complete your purchase
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Secure checkout · Payment gateway coming soon
+                Secure checkout · Powered by Razorpay
               </p>
             </div>
 
@@ -250,11 +330,10 @@ function SelectPlanContent() {
               </div>
             </div>
 
-            {/* Payment gateway placeholder */}
-            <div className="bg-white dark:bg-[#141c32] rounded-2xl border border-dashed border-slate-300 dark:border-white/[0.12] p-6 mb-4 text-center space-y-2">
-              <CreditCard className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Payment gateway will appear here</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">Razorpay / Stripe integration coming soon</p>
+            {/* Razorpay trust badge */}
+            <div className="flex items-center justify-center gap-2 mb-4 text-xs text-slate-400 dark:text-slate-500">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Payments secured by <span className="font-semibold text-slate-500 dark:text-slate-400">Razorpay</span></span>
             </div>
 
             {error && (

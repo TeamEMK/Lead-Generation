@@ -1,7 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
+const Razorpay = require('razorpay');
 const requireAuth = require('../middleware/auth');
 const pool = require('../db');
+
+function getRazorpay() {
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 // GET /api/tokens/plans — public
 router.get('/plans', async (req, res) => {
@@ -14,6 +23,29 @@ router.get('/plans', async (req, res) => {
 });
 
 router.use(requireAuth);
+
+// POST /api/tokens/create-order — create Razorpay order before checkout
+router.post('/create-order', async (req, res) => {
+  const { planId } = req.body;
+  if (!planId) return res.status(400).json({ error: 'planId required' });
+  try {
+    const { rows: planRows } = await pool.query('SELECT * FROM plans WHERE id = $1', [planId]);
+    if (!planRows.length) return res.status(404).json({ error: 'Plan not found' });
+    const plan = planRows[0];
+    const amountWithGst = Math.round(plan.price_inr * 1.18);
+
+    const order = await getRazorpay().orders.create({
+      amount: amountWithGst * 100,
+      currency: 'INR',
+      receipt: `u${req.user.id}_p${planId}_${Date.now()}`,
+      notes: { planId: String(planId), userId: String(req.user.id) },
+    });
+
+    res.json({ orderId: order.id, amount: amountWithGst, currency: 'INR' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/tokens/balance
 router.get('/balance', async (req, res) => {
@@ -114,10 +146,21 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// POST /api/tokens/purchase
+// POST /api/tokens/purchase — verify Razorpay payment then activate subscription
 router.post('/purchase', async (req, res) => {
-  const { planId } = req.body;
+  const { planId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
   if (!planId) return res.status(400).json({ error: 'planId required' });
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ error: 'Payment verification data missing' });
+  }
+
+  const expected = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+  if (expected !== razorpay_signature) {
+    return res.status(400).json({ error: 'Payment verification failed' });
+  }
 
   const client = await pool.connect();
   try {

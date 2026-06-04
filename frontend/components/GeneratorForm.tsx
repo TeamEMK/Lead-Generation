@@ -158,16 +158,21 @@ export default function GeneratorForm() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Generation paused — tokens exhausted</p>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                {paused.savedSoFar} leads saved · {paused.remainingKeywords.length} keyword{paused.remainingKeywords.length !== 1 ? 's' : ''} remaining
+                {paused.savedSoFar} leads saved
+                {paused.remainingKeywords.length > 0
+                  ? ` · ${paused.remainingKeywords.length} keyword${paused.remainingKeywords.length !== 1 ? 's' : ''} remaining`
+                  : ' · renew to continue'}
               </p>
             </div>
           </div>
 
           {/* Remaining keywords */}
           <div className="px-4 py-3 border-b border-amber-200 dark:border-amber-500/20">
-            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Pending keywords</p>
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">
+              {paused.remainingKeywords.length > 0 ? 'Pending keywords' : 'Will re-run keywords'}
+            </p>
             <div className="flex flex-wrap gap-1.5">
-              {paused.remainingKeywords.map(kw => (
+              {(paused.remainingKeywords.length > 0 ? paused.remainingKeywords : keywordList).map(kw => (
                 <span key={kw} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                   <Tag className="w-2.5 h-2.5" />{kw}
                 </span>
@@ -189,7 +194,9 @@ export default function GeneratorForm() {
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm font-bold shadow-md shadow-emerald-500/20 transition-all"
                 >
                   <PlayCircle className="w-4 h-4" />
-                  Resume Generation ({paused.remainingKeywords.length} keyword{paused.remainingKeywords.length !== 1 ? 's' : ''} left)
+                  {paused.remainingKeywords.length > 0
+                    ? `Resume Generation (${paused.remainingKeywords.length} keyword${paused.remainingKeywords.length !== 1 ? 's' : ''} left)`
+                    : 'Resume Generation'}
                 </button>
               </>
             ) : (

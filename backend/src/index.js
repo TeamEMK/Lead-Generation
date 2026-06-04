@@ -5,6 +5,7 @@ const leadsRouter = require('./routes/leads');
 const analyticsRouter = require('./routes/analytics');
 const authRouter = require('./routes/auth');
 const tokensRouter = require('./routes/tokens');
+const adminRouter = require('./routes/admin');
 const pool = require('./db');
 
 const app = express();
@@ -12,10 +13,11 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // server-to-server
-    if (/^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true); // local dev
-    if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true); // prod
-    if (/\.vercel\.app$/.test(origin)) return cb(null, true); // Vercel preview deploys
+    if (!origin) return cb(null, true);
+    if (/^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
+    if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true);
+    if (process.env.ADMIN_URL && origin === process.env.ADMIN_URL) return cb(null, true);
+    if (/\.vercel\.app$/.test(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -26,6 +28,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/tokens', tokensRouter);
+app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

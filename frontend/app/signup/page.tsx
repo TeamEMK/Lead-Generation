@@ -3,14 +3,12 @@
 import { useState, FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Zap, Eye, EyeOff, ArrowRight } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
+import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 const inputCls = "w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.04] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 dark:focus:border-brand-500 transition-all"
 
 export default function SignupPage() {
   const router = useRouter()
-  const { signup } = useAuth()
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -23,20 +21,18 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     if (!/^\d{10}$/.test(phone)) { setError('Mobile number must be exactly 10 digits'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Enter a valid email address'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
+    // Store form data — account is NOT created yet, only after plan selection/payment
+    sessionStorage.setItem('pending_signup', JSON.stringify({
+      name, email, password, phone, city, businessName, gst: gst || undefined,
+    }))
     setLoading(true)
-    try {
-      await signup(name, email, password, phone, city, businessName, gst || undefined)
-      router.push('/select-plan')
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+    router.push('/select-plan')
   }
 
   return (

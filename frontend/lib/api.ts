@@ -128,11 +128,25 @@ export async function fetchSubscription(): Promise<Subscription> {
   return res.json()
 }
 
-export async function purchasePlan(planId: number): Promise<{ balance: number; tokens_added: number; plan: Plan }> {
-  const res = await fetch(`${API_URL}/api/tokens/purchase`, {
+export async function createRazorpayOrder(planId: number): Promise<{ orderId: string; amount: number; currency: string }> {
+  const res = await fetch(`${API_URL}/api/tokens/create-order`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ planId }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to create order')
+  return data
+}
+
+export async function purchasePlan(
+  planId: number,
+  payment: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }
+): Promise<{ balance: number; tokens_added: number; plan: Plan }> {
+  const res = await fetch(`${API_URL}/api/tokens/purchase`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ planId, ...payment }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Purchase failed')

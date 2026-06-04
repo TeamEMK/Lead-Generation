@@ -185,8 +185,18 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   }, [_run])
 
   const resume = useCallback(() => {
-    if (!paused || paused.remainingKeywords.length === 0) return
-    const { remainingKeywords, scrapeEmails } = paused
+    if (!paused) return
+    let { remainingKeywords } = paused
+    const { scrapeEmails } = paused
+
+    // Tokens exhausted mid-last-keyword — remainingKeywords is empty.
+    // Fall back to the original keywords in the textarea (duplicates auto-skipped).
+    if (remainingKeywords.length === 0) {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('savedKeywords') ?? '' : ''
+      remainingKeywords = saved.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
+    }
+
+    if (remainingKeywords.length === 0) return
     setPaused(null)
     _run(remainingKeywords, scrapeEmails)
   }, [paused, _run])
