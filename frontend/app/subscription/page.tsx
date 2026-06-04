@@ -374,7 +374,7 @@ function PricingModal({ onClose, onPurchase }: { onClose: () => void; onPurchase
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">{plan.name}</p>
                   <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">₹{plan.price_inr.toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">+ 18% GST = ₹{(Math.round(plan.price_inr * 1.18)).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">+ 18% GST + 2% fee = ₹{(Math.round(Math.round(plan.price_inr * 1.18) * 1.02)).toLocaleString()}</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-brand-600 dark:text-brand-400">
                   <Coins className="w-4 h-4" />{plan.tokens.toLocaleString()} tokens
@@ -383,7 +383,7 @@ function PricingModal({ onClose, onPurchase }: { onClose: () => void; onPurchase
                 <button onClick={() => handleBuy(plan)} disabled={purchasing !== null}
                   className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 disabled:opacity-60' : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-60'}`}>
                   {purchasing === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                  {purchasing === plan.id ? 'Processing…' : `Pay ₹${(Math.round(plan.price_inr * 1.18)).toLocaleString()}`}
+                  {purchasing === plan.id ? 'Processing…' : `Pay ₹${(Math.round(Math.round(plan.price_inr * 1.18) * 1.02)).toLocaleString()}`}
                 </button>
               </div>
             ))}

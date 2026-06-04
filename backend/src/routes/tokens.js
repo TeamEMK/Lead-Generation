@@ -33,15 +33,17 @@ router.post('/create-order', async (req, res) => {
     if (!planRows.length) return res.status(404).json({ error: 'Plan not found' });
     const plan = planRows[0];
     const amountWithGst = Math.round(plan.price_inr * 1.18);
+    const gatewayFee = Math.round(amountWithGst * 0.02);
+    const totalAmount = amountWithGst + gatewayFee;
 
     const order = await getRazorpay().orders.create({
-      amount: amountWithGst * 100,
+      amount: totalAmount * 100,
       currency: 'INR',
       receipt: `u${req.user.id}_p${planId}_${Date.now()}`,
       notes: { planId: String(planId), userId: String(req.user.id) },
     });
 
-    res.json({ orderId: order.id, amount: amountWithGst, currency: 'INR' });
+    res.json({ orderId: order.id, amount: totalAmount, amountWithGst, gatewayFee, currency: 'INR' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -199,15 +201,17 @@ router.post('/purchase', async (req, res) => {
     const expiresAt = new Date(now);
     expiresAt.setMonth(expiresAt.getMonth() + 1);
     const amountWithGst = Math.round(plan.price_inr * 1.18);
+    const gatewayFee = Math.round(amountWithGst * 0.02);
+    const totalAmountPaid = amountWithGst + gatewayFee;
 
     await client.query(
       `INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [req.user.id, plan.id, plan.tokens, amountWithGst, invoiceNumber, expiresAt]
+      [req.user.id, plan.id, plan.tokens, totalAmountPaid, invoiceNumber, expiresAt]
     );
     await client.query(
       'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-      [req.user.id, 'purchase', plan.tokens, `${plan.name} plan activated — ₹${amountWithGst} (incl. GST) · expires ${expiresAt.toLocaleDateString('en-IN')}`]
+      [req.user.id, 'purchase', plan.tokens, `${plan.name} plan activated — ₹${totalAmountPaid} (incl. GST + gateway fee) · expires ${expiresAt.toLocaleDateString('en-IN')}`]
     );
 
     await client.query('COMMIT');

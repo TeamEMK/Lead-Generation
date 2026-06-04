@@ -70,7 +70,9 @@ function SelectPlanContent() {
 
   const basePrice = selectedPlan?.price_inr ?? 0
   const gstAmount = Math.round(basePrice * 0.18)
-  const totalAmount = basePrice + gstAmount
+  const subtotalWithGst = basePrice + gstAmount
+  const gatewayFee = Math.round(subtotalWithGst * 0.02)
+  const totalAmount = subtotalWithGst + gatewayFee
 
   async function handlePay() {
     if (!selectedPlan) return
@@ -322,6 +324,10 @@ function SelectPlanContent() {
                 <div className="flex items-center justify-between text-sm">
                   <p className="text-slate-500 dark:text-slate-400">GST (18%)</p>
                   <p className="font-medium text-slate-700 dark:text-slate-300">₹{gstAmount.toLocaleString()}</p>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <p className="text-slate-500 dark:text-slate-400">Payment Gateway / Transaction Fee (2%)</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-300">₹{gatewayFee.toLocaleString()}</p>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/[0.06]">
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Total</p>

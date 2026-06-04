@@ -128,7 +128,7 @@ export async function fetchSubscription(): Promise<Subscription> {
   return res.json()
 }
 
-export async function createRazorpayOrder(planId: number): Promise<{ orderId: string; amount: number; currency: string }> {
+export async function createRazorpayOrder(planId: number): Promise<{ orderId: string; amount: number; amountWithGst: number; gatewayFee: number; currency: string }> {
   const res = await fetch(`${API_URL}/api/tokens/create-order`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
