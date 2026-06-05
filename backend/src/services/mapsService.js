@@ -221,7 +221,8 @@ async function searchPlaces(query, onProgress, onBatch) {
 
   if (!locationStr) {
     console.log(`[maps] plain search: "${query}"`);
-    const results = dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
+    const raw = dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
+    const results = raw.map(l => ({ ...l, keyword: query }));
     if (onBatch) {
       const cont = await onBatch(results);
       if (cont === false) return results;
