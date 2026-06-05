@@ -93,8 +93,13 @@ router.post('/generate', async (req, res) => {
     remainingTokens = b[0]?.tokens_balance ?? 0;
 
     if (remainingTokens <= 0) {
-      // Tokens exhausted — pause here and return remaining keywords
       const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
+      if (totalSaved > 0) {
+        await pool.query(
+          'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+          [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} from ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''} (paused)`]
+        );
+      }
       send({
         type: 'token_exhausted',
         remainingKeywords: keywords.slice(i),
@@ -185,19 +190,20 @@ router.post('/generate', async (req, res) => {
       catch (err) { console.error(`email scrape error for "${keyword}":`, err.message); }
     }
 
-    // One transaction log entry for the entire keyword (not per cell)
+    // Incremental total_found update (accurate even if browser closes mid-run)
     if (kwSaved > 0) {
-      await pool.query(
-        'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-        [req.user.id, 'usage', -kwSaved, `Generated ${kwSaved} lead${kwSaved !== 1 ? 's' : ''} for "${keyword}"`]
-      );
-      // Incremental update so total_found is accurate even if browser closes mid-run
       await pool.query('UPDATE generation_runs SET total_found = total_found + $1 WHERE id = $2', [kwSaved, runId]);
     }
 
     // If tokens ran out mid-search, pause here
     if (tokenExhaustedMidSearch) {
       const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
+      if (totalSaved > 0) {
+        await pool.query(
+          'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+          [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} from ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''} (paused)`]
+        );
+      }
       send({
         type: 'token_exhausted',
         remainingKeywords: keywords.slice(i + 1),
@@ -216,6 +222,12 @@ router.post('/generate', async (req, res) => {
     send({ type: 'keyword_done', keyword, index: i, total: keywords.length, found: totalSaved, totalSoFar: totalSaved, elapsedMs: elapsed, etaMs, tokenBalance: remainingTokens });
 
     if (remainingTokens <= 0 && i < keywords.length - 1) {
+      if (totalSaved > 0) {
+        await pool.query(
+          'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+          [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} from ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''} (paused)`]
+        );
+      }
       send({
         type: 'token_exhausted',
         remainingKeywords: keywords.slice(i + 1),
@@ -231,6 +243,13 @@ router.post('/generate', async (req, res) => {
   }
 
   await pool.query(`UPDATE generation_runs SET status = 'done' WHERE id = $1`, [runId]);
+
+  if (totalSaved > 0) {
+    await pool.query(
+      'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+      [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} from ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''}`]
+    );
+  }
 
   const { rows: finalBalRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
   const newBalance = finalBalRows[0]?.tokens_balance ?? 0;
