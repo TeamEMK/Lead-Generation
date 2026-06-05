@@ -38,7 +38,7 @@ async function saveLeads(leads, userId, runId) {
 
 // POST /api/leads/generate — SSE streaming with per-keyword token check + pause/resume
 router.post('/generate', async (req, res) => {
-  const { keywords, scrapeEmails = false } = req.body;
+  const { keywords, scrapeEmails = false, runId: existingRunId } = req.body;
   if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
     return res.status(400).json({ error: 'Keywords array is required' });
   }
@@ -56,18 +56,33 @@ router.post('/generate', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  // Fix 2: heartbeat every 30s so proxies don't kill idle-looking connections
+  // Heartbeat every 30s; track disconnect so send() never throws and loop keeps running
+  let clientConnected = true;
   const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 30000);
-  res.on('close', () => clearInterval(heartbeat));
+  res.on('close', () => { clientConnected = false; clearInterval(heartbeat); });
 
-  function send(data) { res.write(`data: ${JSON.stringify(data)}\n\n`); }
+  function send(data) {
+    if (!clientConnected) return;
+    try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch { clientConnected = false; }
+  }
 
-  // Create run record for this session
-  const runRes = await pool.query(
-    `INSERT INTO generation_runs (user_id, keywords, total_found, status) VALUES ($1, $2, $3, 'running') RETURNING id`,
-    [req.user.id, keywords, 0]
-  );
-  const runId = runRes.rows[0].id;
+  // Reuse existing run on retry (same history entry), or create a new one
+  let runId = null;
+  if (existingRunId) {
+    const { rows } = await pool.query(
+      `SELECT id FROM generation_runs WHERE id = $1 AND user_id = $2 AND status = 'running'`,
+      [existingRunId, req.user.id]
+    );
+    runId = rows[0]?.id ?? null;
+  }
+  if (!runId) {
+    const runRes = await pool.query(
+      `INSERT INTO generation_runs (user_id, keywords, total_found, status) VALUES ($1, $2, $3, 'running') RETURNING id`,
+      [req.user.id, keywords, 0]
+    );
+    runId = runRes.rows[0].id;
+  }
+  send({ type: 'started', runId });
 
   const kwDurations = [];
   let totalSaved = 0, totalSkipped = 0;
@@ -176,6 +191,8 @@ router.post('/generate', async (req, res) => {
         'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
         [req.user.id, 'usage', -kwSaved, `Generated ${kwSaved} lead${kwSaved !== 1 ? 's' : ''} for "${keyword}"`]
       );
+      // Incremental update so total_found is accurate even if browser closes mid-run
+      await pool.query('UPDATE generation_runs SET total_found = total_found + $1 WHERE id = $2', [kwSaved, runId]);
     }
 
     // If tokens ran out mid-search, pause here
@@ -187,7 +204,7 @@ router.post('/generate', async (req, res) => {
         savedSoFar: totalSaved,
         tokenBalance: finalBal[0]?.tokens_balance ?? 0,
       });
-      await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'paused' WHERE id = $2`, [totalSaved, runId]);
+      await pool.query(`UPDATE generation_runs SET status = 'paused' WHERE id = $1`, [runId]);
       res.end();
       return;
     }
@@ -205,7 +222,7 @@ router.post('/generate', async (req, res) => {
         savedSoFar: totalSaved,
         tokenBalance: remainingTokens,
       });
-      await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'paused' WHERE id = $2`, [totalSaved, runId]);
+      await pool.query(`UPDATE generation_runs SET status = 'paused' WHERE id = $1`, [runId]);
       res.end();
       return;
     }
@@ -213,7 +230,7 @@ router.post('/generate', async (req, res) => {
     if (i < keywords.length - 1) await sleep(KEYWORD_DELAY_MS);
   }
 
-  await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'done' WHERE id = $2`, [totalSaved, runId]);
+  await pool.query(`UPDATE generation_runs SET status = 'done' WHERE id = $1`, [runId]);
 
   const { rows: finalBalRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
   const newBalance = finalBalRows[0]?.tokens_balance ?? 0;
@@ -254,6 +271,11 @@ router.get('/', async (req, res) => {
 // GET /api/leads/history
 router.get('/history', async (req, res) => {
   try {
+    // Auto-cleanup runs stuck as 'running' for >30 minutes (browser was closed mid-run)
+    await pool.query(
+      `UPDATE generation_runs SET status = 'error' WHERE user_id = $1 AND status = 'running' AND created_at < NOW() - INTERVAL '30 minutes'`,
+      [req.user.id]
+    );
     const { rows } = await pool.query(
       'SELECT id, keywords, total_found, status, created_at FROM generation_runs WHERE user_id = $1 ORDER BY created_at DESC',
       [req.user.id]

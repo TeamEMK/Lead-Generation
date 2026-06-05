@@ -54,6 +54,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastCompletedIdxRef = useRef(-1)
   const totalSavedRef = useRef(0)
+  const runIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (loading) {
@@ -80,6 +81,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setLiveTokenBalance(null)
       lastCompletedIdxRef.current = -1
       totalSavedRef.current = 0
+      runIdRef.current = null
     }
 
     let shouldRetry = false
@@ -94,7 +96,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ keywords, scrapeEmails }),
+        body: JSON.stringify({ keywords, scrapeEmails, ...(runIdRef.current ? { runId: runIdRef.current } : {}) }),
       })
 
       if (!res.ok || !res.body) {
@@ -120,7 +122,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           let evt: any
           try { evt = JSON.parse(line.slice(6)) } catch { continue }
 
-          if (evt.type === 'token_update') {
+          if (evt.type === 'started') {
+            runIdRef.current = evt.runId
+          } else if (evt.type === 'token_update') {
             setLiveTokenBalance(evt.tokenBalance)
           } else if (evt.type === 'cell_progress') {
             setProgress(p => p ? { ...p, totalSoFar: evt.partialCount } : p)
