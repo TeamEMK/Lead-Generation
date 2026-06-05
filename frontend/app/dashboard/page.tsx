@@ -161,9 +161,9 @@ export default function DashboardPage() {
                   {tokenBalance.toLocaleString()}
                 </p>
               )}
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                {isLow ? '⚠️ Running low — recharge soon' : '1 token = 1 lead saved · never expires'}
-              </p>
+              {isLow && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">⚠️ Running low — recharge soon</p>
+              )}
             </div>
           </div>
           <button
