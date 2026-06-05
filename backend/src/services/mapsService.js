@@ -159,6 +159,15 @@ function extractLocation(query) {
     const m = query.match(re);
     if (m) return { keyword: m[1].trim(), locationStr: m[2].trim() };
   }
+  // Fallback: if last word starts with a capital/accented-capital letter, treat it as a location.
+  // Handles "luxury jewelry Spain", "joyería España", "boutique Paris" etc.
+  const words = query.trim().split(/\s+/);
+  if (words.length >= 2) {
+    const last = words[words.length - 1];
+    if (/^[A-ZÀ-ž]/.test(last)) {
+      return { keyword: words.slice(0, -1).join(' '), locationStr: last };
+    }
+  }
   return { keyword: query.trim(), locationStr: '' };
 }
 

@@ -4,23 +4,26 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail,
-  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight, RefreshCw, WifiOff,
+  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight, RefreshCw, WifiOff, Activity,
 } from 'lucide-react'
 import { useGeneration } from '../context/GenerationContext'
 import { fetchTokenBalance } from '../lib/api'
 
-function fmtTime(ms: number) {
-  const s = Math.ceil(ms / 1000)
+function fmtSecs(s: number) {
   if (s <= 0) return '0s'
   if (s < 60) return `${s}s`
   const m = Math.floor(s / 60)
   const rem = s % 60
-  return rem > 0 ? `${m}m ${rem}s` : `${m}m`
+  return rem > 0 ? `${m} min ${rem} sec` : `${m} min`
+}
+
+function fmtTime(ms: number) {
+  return fmtSecs(Math.ceil(ms / 1000))
 }
 
 export default function GeneratorForm() {
   const router = useRouter()
-  const { loading, elapsed, progress, result, paused, error, generate, resume, clear } = useGeneration()
+  const { loading, elapsed, progress, result, paused, error, activeRun, generate, resume, clear, dismissActiveRun } = useGeneration()
   const [keywords, setKeywords] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('savedKeywords') ?? '' : ''
   )
@@ -56,6 +59,47 @@ export default function GeneratorForm() {
 
   return (
     <form id="generate-form" onSubmit={handleSubmit} className="flex flex-col flex-1 gap-5">
+
+      {/* Active run reconnect banner */}
+      {activeRun && !loading && (
+        <div className="rounded-xl border border-brand-300 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10 overflow-hidden">
+          <div className="flex items-start gap-3 p-4 border-b border-brand-200 dark:border-brand-500/20">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-brand-100 dark:bg-brand-500/20">
+              <Activity className="w-5 h-5 text-brand-600 dark:text-brand-400 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-brand-800 dark:text-brand-300">Generation running in background</p>
+              <p className="text-xs mt-0.5 text-brand-600 dark:text-brand-400">
+                {activeRun.totalFound} lead{activeRun.totalFound !== 1 ? 's' : ''} saved so far · {activeRun.keywords.length} keyword{activeRun.keywords.length !== 1 ? 's' : ''} · {activeRun.tokenBalance.toLocaleString()} tokens left
+              </p>
+            </div>
+          </div>
+          <div className="px-4 py-3 border-b border-brand-200 dark:border-brand-500/20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-2">Keywords in progress</p>
+            <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+              {activeRun.keywords.slice(0, 30).map(kw => (
+                <span key={kw} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-500/30">
+                  <Tag className="w-2.5 h-2.5" />{kw}
+                </span>
+              ))}
+              {activeRun.keywords.length > 30 && (
+                <span className="text-xs text-slate-400 dark:text-slate-500 self-center">+{activeRun.keywords.length - 30} more</span>
+              )}
+            </div>
+          </div>
+          <div className="p-4">
+            <p className="text-xs text-brand-600 dark:text-brand-400 mb-3">The backend is still processing. You can wait for it to finish, or dismiss and start a new generation.</p>
+            <button
+              type="button"
+              onClick={dismissActiveRun}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 text-sm font-semibold transition-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Dismiss & Start New
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Keywords */}
       <div className="flex-1 flex flex-col">
@@ -337,7 +381,7 @@ export default function GeneratorForm() {
               </span>
             </div>
             <div className="flex items-center gap-1 tabular font-medium flex-shrink-0">
-              <Clock className="w-3 h-3" />{elapsed}s
+              <Clock className="w-3 h-3" />{fmtSecs(elapsed)}
             </div>
           </div>
           {progress && (
@@ -353,11 +397,11 @@ export default function GeneratorForm() {
         </div>
       )}
 
-      {/* Generate / disabled when paused */}
+      {/* Generate / disabled when paused or active run pending */}
       {!paused && (
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !!activeRun}
           className="mt-auto w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-brand-500/20 text-sm"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>

@@ -6,6 +6,11 @@ import type { Lead } from '../lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
 
+function authHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export type ProgressState = {
   index: number
   total: number
@@ -21,6 +26,15 @@ export type PausedState = {
   tokenBalance: number
   scrapeEmails: boolean
   reason: 'tokens' | 'network'
+  runId: number | null
+}
+
+export type ActiveRunState = {
+  runId: number
+  keywords: string[]
+  totalFound: number
+  tokenBalance: number
+  startedAt: string
 }
 
 interface GenerationContextValue {
@@ -32,9 +46,11 @@ interface GenerationContextValue {
   leads: Lead[]
   error: string | null
   liveTokenBalance: number | null
+  activeRun: ActiveRunState | null
   generate: (keywords: string[], scrapeEmails: boolean) => void
   resume: () => void
   clear: () => void
+  dismissActiveRun: () => void
 }
 
 const GenerationContext = createContext<GenerationContextValue | null>(null)
@@ -48,6 +64,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState<string | null>(null)
   const [liveTokenBalance, setLiveTokenBalance] = useState<number | null>(null)
+  const [activeRun, setActiveRun] = useState<ActiveRunState | null>(null)
 
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const startRef = useRef(0)
@@ -55,7 +72,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const lastCompletedIdxRef = useRef(-1)
   const totalSavedRef = useRef(0)
   const runIdRef = useRef<number | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Elapsed timer for active SSE generation
   useEffect(() => {
     if (loading) {
       startRef.current = Date.now()
@@ -67,13 +86,66 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [loading])
 
-  // Cancel SSE reader on unmount to prevent dangling connections
+  // Cancel SSE reader on unmount
   useEffect(() => {
     return () => { readerRef.current?.cancel().catch(() => {}) }
   }, [])
 
-  const _run = useCallback(async (keywords: string[], scrapeEmails: boolean, retryCount = 0) => {
+  // On mount: check if a run is active in the background (e.g. after browser refresh)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch(`${API_URL}/api/leads/active`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.active) {
+          setActiveRun({
+            runId: data.runId,
+            keywords: data.keywords,
+            totalFound: data.totalFound,
+            tokenBalance: data.tokenBalance,
+            startedAt: data.startedAt,
+          })
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Poll for active run progress every 3s
+  useEffect(() => {
+    if (!activeRun) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      return
+    }
+    const runId = activeRun.runId
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/leads/active`, { headers: authHeaders() })
+        if (!r.ok) return
+        const data = await r.json()
+        if (data.active && data.runId === runId) {
+          setActiveRun(prev => prev ? { ...prev, totalFound: data.totalFound, tokenBalance: data.tokenBalance } : null)
+        } else {
+          // Run finished — fetch leads and show result
+          clearInterval(pollRef.current!); pollRef.current = null
+          setActiveRun(null)
+          fetchLeads().then(setLeads).catch(() => {})
+        }
+      } catch {}
+    }, 3000)
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+  }, [activeRun?.runId])
+
+  const dismissActiveRun = useCallback(() => {
+    setActiveRun(null)
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }, [])
+
+  const _run = useCallback(async (keywords: string[], scrapeEmails: boolean, retryCount = 0, keepRunId = false) => {
     if (retryCount === 0) {
+      setActiveRun(null)
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
       setLoading(true)
       setError(null)
       setPaused(null)
@@ -81,7 +153,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setLiveTokenBalance(null)
       lastCompletedIdxRef.current = -1
       totalSavedRef.current = 0
-      runIdRef.current = null
+      if (!keepRunId) runIdRef.current = null
     }
 
     let shouldRetry = false
@@ -89,13 +161,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     let retryKeywords = keywords
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       const res = await fetch(`${API_URL}/api/leads/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ keywords, scrapeEmails, ...(runIdRef.current ? { runId: runIdRef.current } : {}) }),
       })
 
@@ -147,6 +215,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
               tokenBalance: evt.tokenBalance ?? 0,
               scrapeEmails,
               reason: 'tokens',
+              runId: runIdRef.current,
             })
             setProgress(null)
           } else if (evt.type === 'done') {
@@ -162,10 +231,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        // intentional cancel — don't retry
+        // intentional cancel
       } else if (!err.message?.startsWith('INSUFFICIENT_TOKENS') && retryCount < 3) {
-        // Network/transient error — retry from last completed keyword
-        const delaySec = Math.pow(2, retryCount) // 1s, 2s, 4s
+        const delaySec = Math.pow(2, retryCount)
         setError(`Network issue — retrying in ${delaySec}s… (attempt ${retryCount + 1}/3)`)
         shouldRetry = true
         retryDelaySec = delaySec
@@ -175,7 +243,6 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           lastCompletedIdxRef.current = -1
         }
       } else if (!err.message?.startsWith('INSUFFICIENT_TOKENS')) {
-        // All retries failed — show as paused so user can resume or start new
         const nextIdx = lastCompletedIdxRef.current + 1
         const remaining = nextIdx > 0 && nextIdx < keywords.length ? keywords.slice(nextIdx) : keywords
         fetchLeads().then(setLeads).catch(() => {})
@@ -185,6 +252,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           tokenBalance: 0,
           scrapeEmails,
           reason: 'network',
+          runId: runIdRef.current,
         })
         setError(null)
       } else {
@@ -213,18 +281,16 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const resume = useCallback(() => {
     if (!paused) return
     let { remainingKeywords } = paused
-    const { scrapeEmails } = paused
-
-    // Tokens exhausted mid-last-keyword — remainingKeywords is empty.
-    // Fall back to the original keywords in the textarea (duplicates auto-skipped).
+    const { scrapeEmails, runId: pausedRunId } = paused
     if (remainingKeywords.length === 0) {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('savedKeywords') ?? '' : ''
       remainingKeywords = saved.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
     }
-
     if (remainingKeywords.length === 0) return
+    // Restore the original runId so the backend reuses the same history entry
+    runIdRef.current = pausedRunId
     setPaused(null)
-    _run(remainingKeywords, scrapeEmails)
+    _run(remainingKeywords, scrapeEmails, 0, true)
   }, [paused, _run])
 
   const clear = useCallback(() => {
@@ -239,7 +305,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   return (
-    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, liveTokenBalance, generate, resume, clear }}>
+    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, liveTokenBalance, activeRun, generate, resume, clear, dismissActiveRun }}>
       {children}
     </GenerationContext.Provider>
   )

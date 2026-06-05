@@ -66,11 +66,11 @@ router.post('/generate', async (req, res) => {
     try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch { clientConnected = false; }
   }
 
-  // Reuse existing run on retry (same history entry), or create a new one
+  // Reuse existing run on retry/resume — also resets error→running so no new history entry is created
   let runId = null;
   if (existingRunId) {
     const { rows } = await pool.query(
-      `SELECT id FROM generation_runs WHERE id = $1 AND user_id = $2 AND status = 'running'`,
+      `UPDATE generation_runs SET status = 'running' WHERE id = $1 AND user_id = $2 AND status IN ('running', 'error') RETURNING id`,
       [existingRunId, req.user.id]
     );
     runId = rows[0]?.id ?? null;
@@ -283,6 +283,32 @@ router.get('/', async (req, res) => {
     res.json({ leads, count: leads.length });
   } catch (err) {
     console.error('Fetch leads error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/leads/active — returns current running run if any (for reconnect after refresh)
+router.get('/active', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT gr.id, gr.keywords, gr.total_found, gr.created_at, u.tokens_balance
+       FROM generation_runs gr
+       JOIN users u ON u.id = gr.user_id
+       WHERE gr.user_id = $1 AND gr.status = 'running'
+       ORDER BY gr.created_at DESC LIMIT 1`,
+      [req.user.id]
+    );
+    if (!rows.length) return res.json({ active: false });
+    const run = rows[0];
+    res.json({
+      active: true,
+      runId: run.id,
+      keywords: run.keywords,
+      totalFound: run.total_found,
+      tokenBalance: run.tokens_balance,
+      startedAt: run.created_at,
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
