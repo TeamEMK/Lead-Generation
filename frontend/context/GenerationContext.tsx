@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
+import { fetchLeads } from '../lib/api'
 import type { Lead } from '../lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
@@ -19,6 +20,7 @@ export type PausedState = {
   savedSoFar: number
   tokenBalance: number
   scrapeEmails: boolean
+  reason: 'tokens' | 'network'
 }
 
 interface GenerationContextValue {
@@ -50,6 +52,8 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const startRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastCompletedIdxRef = useRef(-1)
+  const totalSavedRef = useRef(0)
 
   useEffect(() => {
     if (loading) {
@@ -74,10 +78,13 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setPaused(null)
       setProgress(null)
       setLiveTokenBalance(null)
+      lastCompletedIdxRef.current = -1
+      totalSavedRef.current = 0
     }
 
     let shouldRetry = false
     let retryDelaySec = 0
+    let retryKeywords = keywords
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -122,29 +129,26 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           } else if (evt.type === 'scraping') {
             setProgress(p => p ? { ...p, phase: 'scraping' } : p)
           } else if (evt.type === 'keyword_done') {
+            lastCompletedIdxRef.current = evt.index
+            totalSavedRef.current = evt.totalSoFar
             setProgress({ index: evt.index, total: evt.total, keyword: evt.keyword, phase: 'done', totalSoFar: evt.totalSoFar, etaMs: evt.etaMs })
-            if (evt.tokenBalance !== undefined) {
-              setLiveTokenBalance(evt.tokenBalance)
-            }
+            if (evt.tokenBalance !== undefined) setLiveTokenBalance(evt.tokenBalance)
           } else if (evt.type === 'keyword_error') {
             setProgress(p => p ? { ...p, phase: 'error' } : p)
           } else if (evt.type === 'token_exhausted') {
-            // Pause state — store remaining keywords for resume
-            setLeads(prev => {
-              const newLeads = (evt.leads ?? []).map((l: any, i: number) => ({ ...l, id: i + 1 }))
-              return newLeads.length > 0 ? newLeads : prev
-            })
+            fetchLeads().then(setLeads).catch(() => {})
             setPaused({
               remainingKeywords: evt.remainingKeywords ?? [],
               savedSoFar: evt.savedSoFar ?? 0,
               tokenBalance: evt.tokenBalance ?? 0,
               scrapeEmails,
+              reason: 'tokens',
             })
             setProgress(null)
           } else if (evt.type === 'done') {
             setResult({ saved: evt.saved, skipped: evt.skipped, tokenBalance: evt.tokenBalance ?? 0 })
             setLiveTokenBalance(evt.tokenBalance ?? 0)
-            setLeads((evt.leads ?? []).map((l: any, i: number) => ({ ...l, id: i + 1 })))
+            fetchLeads().then(setLeads).catch(() => {})
             setProgress(null)
             setPaused(null)
           } else if (evt.type === 'error') {
@@ -156,11 +160,29 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       if (err.name === 'AbortError') {
         // intentional cancel — don't retry
       } else if (!err.message?.startsWith('INSUFFICIENT_TOKENS') && retryCount < 3) {
-        // Network/transient error — retry with backoff
+        // Network/transient error — retry from last completed keyword
         const delaySec = Math.pow(2, retryCount) // 1s, 2s, 4s
         setError(`Network issue — retrying in ${delaySec}s… (attempt ${retryCount + 1}/3)`)
         shouldRetry = true
         retryDelaySec = delaySec
+        const nextIdx = lastCompletedIdxRef.current + 1
+        if (nextIdx > 0 && nextIdx < keywords.length) {
+          retryKeywords = keywords.slice(nextIdx)
+          lastCompletedIdxRef.current = -1
+        }
+      } else if (!err.message?.startsWith('INSUFFICIENT_TOKENS')) {
+        // All retries failed — show as paused so user can resume or start new
+        const nextIdx = lastCompletedIdxRef.current + 1
+        const remaining = nextIdx > 0 && nextIdx < keywords.length ? keywords.slice(nextIdx) : keywords
+        fetchLeads().then(setLeads).catch(() => {})
+        setPaused({
+          remainingKeywords: remaining,
+          savedSoFar: totalSavedRef.current,
+          tokenBalance: 0,
+          scrapeEmails,
+          reason: 'network',
+        })
+        setError(null)
       } else {
         setError(err.message)
       }
@@ -174,7 +196,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     if (shouldRetry) {
       await new Promise(r => setTimeout(r, retryDelaySec * 1000))
       setError(null)
-      return _run(keywords, scrapeEmails, retryCount + 1)
+      return _run(retryKeywords, scrapeEmails, retryCount + 1)
     }
   }, [])
 

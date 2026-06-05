@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail,
-  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight,
+  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight, RefreshCw, WifiOff,
 } from 'lucide-react'
 import { useGeneration } from '../context/GenerationContext'
 import { fetchTokenBalance } from '../lib/api'
@@ -20,7 +20,7 @@ function fmtTime(ms: number) {
 
 export default function GeneratorForm() {
   const router = useRouter()
-  const { loading, elapsed, progress, result, paused, error, generate, resume } = useGeneration()
+  const { loading, elapsed, progress, result, paused, error, generate, resume, clear } = useGeneration()
   const [keywords, setKeywords] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('savedKeywords') ?? '' : ''
   )
@@ -149,42 +149,108 @@ export default function GeneratorForm() {
 
       {/* ── PAUSED STATE ── */}
       {paused && (
-        <div className="rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 overflow-hidden">
+        <div className={`rounded-xl border overflow-hidden ${
+          paused.reason === 'network'
+            ? 'border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/10'
+            : 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10'
+        }`}>
           {/* Header */}
-          <div className="flex items-start gap-3 p-4 border-b border-amber-200 dark:border-amber-500/20">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <PauseCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <div className={`flex items-start gap-3 p-4 border-b ${
+            paused.reason === 'network'
+              ? 'border-rose-200 dark:border-rose-500/20'
+              : 'border-amber-200 dark:border-amber-500/20'
+          }`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              paused.reason === 'network'
+                ? 'bg-rose-100 dark:bg-rose-500/20'
+                : 'bg-amber-100 dark:bg-amber-500/20'
+            }`}>
+              {paused.reason === 'network'
+                ? <WifiOff className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                : <PauseCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Generation paused — tokens exhausted</p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                {paused.savedSoFar} leads saved
+              <p className={`text-sm font-bold ${
+                paused.reason === 'network'
+                  ? 'text-rose-800 dark:text-rose-300'
+                  : 'text-amber-800 dark:text-amber-300'
+              }`}>
+                {paused.reason === 'network'
+                  ? 'Generation interrupted — network error'
+                  : 'Generation paused — tokens exhausted'}
+              </p>
+              <p className={`text-xs mt-0.5 ${
+                paused.reason === 'network'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-amber-600 dark:text-amber-400'
+              }`}>
+                {paused.savedSoFar > 0 ? `${paused.savedSoFar} leads saved · ` : ''}
                 {paused.remainingKeywords.length > 0
-                  ? ` · ${paused.remainingKeywords.length} keyword${paused.remainingKeywords.length !== 1 ? 's' : ''} remaining`
-                  : ' · renew to continue'}
+                  ? `${paused.remainingKeywords.length} keyword${paused.remainingKeywords.length !== 1 ? 's' : ''} remaining`
+                  : paused.reason === 'tokens' ? 'renew to continue' : 'ready to retry'}
               </p>
             </div>
           </div>
 
           {/* Remaining keywords */}
-          <div className="px-4 py-3 border-b border-amber-200 dark:border-amber-500/20">
-            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">
+          <div className={`px-4 py-3 border-b ${
+            paused.reason === 'network'
+              ? 'border-rose-200 dark:border-rose-500/20'
+              : 'border-amber-200 dark:border-amber-500/20'
+          }`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${
+              paused.reason === 'network'
+                ? 'text-rose-700 dark:text-rose-400'
+                : 'text-amber-700 dark:text-amber-400'
+            }`}>
               {paused.remainingKeywords.length > 0 ? 'Pending keywords' : 'Will re-run keywords'}
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {(paused.remainingKeywords.length > 0 ? paused.remainingKeywords : keywordList).map(kw => (
-                <span key={kw} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+              {(paused.remainingKeywords.length > 0 ? paused.remainingKeywords : keywordList).slice(0, 50).map(kw => (
+                <span key={kw} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${
+                  paused.reason === 'network'
+                    ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30'
+                    : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'
+                }`}>
                   <Tag className="w-2.5 h-2.5" />{kw}
                 </span>
               ))}
+              {(paused.remainingKeywords.length > 0 ? paused.remainingKeywords : keywordList).length > 50 && (
+                <span className="text-xs text-slate-400 dark:text-slate-500 self-center">
+                  +{(paused.remainingKeywords.length > 0 ? paused.remainingKeywords : keywordList).length - 50} more
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Resume or Renew */}
-          <div className="p-4">
-            {pausedBalance !== null && pausedBalance > 0 ? (
+          {/* Actions */}
+          <div className="p-4 space-y-2.5">
+            {paused.reason === 'network' ? (
+              // Network error: Resume (retry remaining) + Start New
               <>
-                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-xs font-semibold mb-3">
+                <button
+                  type="button"
+                  onClick={resume}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm font-bold shadow-md shadow-emerald-500/20 transition-all"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  {paused.remainingKeywords.length > 0
+                    ? `Resume (${paused.remainingKeywords.length} keyword${paused.remainingKeywords.length !== 1 ? 's' : ''} left)`
+                    : 'Retry Generation'}
+                </button>
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 text-sm font-semibold transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Start New Generation
+                </button>
+              </>
+            ) : pausedBalance !== null && pausedBalance > 0 ? (
+              // Tokens available: Resume + Start New
+              <>
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   {pausedBalance.toLocaleString()} tokens available — ready to resume
                 </div>
@@ -198,10 +264,19 @@ export default function GeneratorForm() {
                     ? `Resume Generation (${paused.remainingKeywords.length} keyword${paused.remainingKeywords.length !== 1 ? 's' : ''} left)`
                     : 'Resume Generation'}
                 </button>
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 text-sm font-semibold transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Start New Generation
+                </button>
               </>
             ) : (
+              // No tokens: Renew + Start New
               <>
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">Renew your plan to continue</p>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Renew your plan to continue</p>
                 <button
                   type="button"
                   onClick={() => router.push('/select-plan')}
@@ -209,6 +284,14 @@ export default function GeneratorForm() {
                 >
                   Renew Plan to Continue
                   <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 text-sm font-semibold transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Start New Generation
                 </button>
               </>
             )}

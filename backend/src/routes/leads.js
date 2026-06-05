@@ -56,6 +56,10 @@ router.post('/generate', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
+  // Fix 2: heartbeat every 30s so proxies don't kill idle-looking connections
+  const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 30000);
+  res.on('close', () => clearInterval(heartbeat));
+
   function send(data) { res.write(`data: ${JSON.stringify(data)}\n\n`); }
 
   // Create run record for this session
@@ -65,7 +69,6 @@ router.post('/generate', async (req, res) => {
   );
   const runId = runRes.rows[0].id;
 
-  const allLeads = [];
   const kwDurations = [];
   let totalSaved = 0, totalSkipped = 0;
 
@@ -82,7 +85,6 @@ router.post('/generate', async (req, res) => {
         remainingKeywords: keywords.slice(i),
         savedSoFar: totalSaved,
         tokenBalance: finalBal[0]?.tokens_balance ?? 0,
-        leads: allLeads,
       });
       res.end();
       return;
@@ -145,7 +147,6 @@ router.post('/generate', async (req, res) => {
             remainingTokens += (actuallyDeducted - saved);
           }
 
-          allLeads.push(...toSave);
           send({ type: 'token_update', tokenBalance: remainingTokens, totalSaved });
 
           if (remainingTokens <= 0) {
@@ -163,8 +164,8 @@ router.post('/generate', async (req, res) => {
       continue;
     }
 
-    if (scrapeEmails && allLeads.length > 0) {
-      send({ type: 'scraping', keyword, index: i, total: keywords.length, count: allLeads.length });
+    if (scrapeEmails && totalSaved > 0) {
+      send({ type: 'scraping', keyword, index: i, total: keywords.length, count: totalSaved });
       try { /* email scraping happens post-save for now */ }
       catch (err) { console.error(`email scrape error for "${keyword}":`, err.message); }
     }
@@ -182,10 +183,9 @@ router.post('/generate', async (req, res) => {
       const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
       send({
         type: 'token_exhausted',
-        remainingKeywords: keywords.slice(i + 1), // skip current keyword (partially done, saved leads are in DB)
+        remainingKeywords: keywords.slice(i + 1),
         savedSoFar: totalSaved,
         tokenBalance: finalBal[0]?.tokens_balance ?? 0,
-        leads: allLeads,
       });
       await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'paused' WHERE id = $2`, [totalSaved, runId]);
       res.end();
@@ -196,7 +196,7 @@ router.post('/generate', async (req, res) => {
     const avgMs = kwDurations.reduce((a, b) => a + b, 0) / kwDurations.length;
     const etaMs = Math.round((keywords.length - i - 1) * avgMs);
 
-    send({ type: 'keyword_done', keyword, index: i, total: keywords.length, found: allLeads.length, totalSoFar: allLeads.length, elapsedMs: elapsed, etaMs, tokenBalance: remainingTokens });
+    send({ type: 'keyword_done', keyword, index: i, total: keywords.length, found: totalSaved, totalSoFar: totalSaved, elapsedMs: elapsed, etaMs, tokenBalance: remainingTokens });
 
     if (remainingTokens <= 0 && i < keywords.length - 1) {
       send({
@@ -204,7 +204,6 @@ router.post('/generate', async (req, res) => {
         remainingKeywords: keywords.slice(i + 1),
         savedSoFar: totalSaved,
         tokenBalance: remainingTokens,
-        leads: allLeads,
       });
       await pool.query(`UPDATE generation_runs SET total_found = $1, status = 'paused' WHERE id = $2`, [totalSaved, runId]);
       res.end();
@@ -219,7 +218,7 @@ router.post('/generate', async (req, res) => {
   const { rows: finalBalRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
   const newBalance = finalBalRows[0]?.tokens_balance ?? 0;
 
-  send({ type: 'done', saved: totalSaved, skipped: totalSkipped, tokenBalance: newBalance, leads: allLeads });
+  send({ type: 'done', saved: totalSaved, skipped: totalSkipped, tokenBalance: newBalance });
   res.end();
 });
 
