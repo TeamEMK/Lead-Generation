@@ -128,9 +128,11 @@ function StatusBadge({ status }: { status: GenerationRun['status'] }) {
 
 function RunRow({ run, index, total }: { run: GenerationRun; index: number; total: number }) {
   const [expanded, setExpanded] = useState(false)
+  const [kwExpanded, setKwExpanded] = useState(false)
   const [leads, setLeads] = useState<Lead[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const KW_PREVIEW = 3
 
   async function toggle() {
     if (expanded) { setExpanded(false); return }
@@ -169,12 +171,22 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 ml-5">{timeAgo(run.created_at)}</p>
         </td>
         <td className="px-5 py-3.5">
-          <div className="flex flex-wrap gap-1.5 mb-1.5">
-            {run.keywords.map((kw, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-50 dark:bg-navy-500/10 text-navy-700 dark:text-navy-400 border border-navy-100 dark:border-navy-500/20">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            {(kwExpanded ? run.keywords : run.keywords.slice(0, KW_PREVIEW)).map((kw, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-50 dark:bg-navy-500/10 text-navy-700 dark:text-navy-400 border border-navy-100 dark:border-navy-500/20 whitespace-nowrap">
                 <Tag className="w-2.5 h-2.5" />{kw}
               </span>
             ))}
+            {run.keywords.length > KW_PREVIEW && (
+              <button
+                onClick={e => { e.stopPropagation(); setKwExpanded(v => !v) }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/[0.12] border border-slate-200 dark:border-white/[0.08] transition-colors whitespace-nowrap"
+              >
+                {kwExpanded
+                  ? 'Show less'
+                  : `+${run.keywords.length - KW_PREVIEW} more`}
+              </button>
+            )}
           </div>
           <StatusBadge status={run.status ?? 'done'} />
         </td>
