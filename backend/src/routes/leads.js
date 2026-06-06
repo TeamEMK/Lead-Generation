@@ -5,10 +5,26 @@ const { scrapeEmailsForLeads } = require('../services/emailScraperService');
 const requireAuth = require('../middleware/auth');
 const pool = require('../db');
 
-const KEYWORD_DELAY_MS = 600;
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// In-memory set of cancelled runIds — workers check this to stop early
+const cancelledRuns = new Set();
+
 router.use(requireAuth);
+
+// POST /api/leads/cancel — stop a running generation
+router.post('/cancel', async (req, res) => {
+  const { runId } = req.body;
+  if (!runId) return res.status(400).json({ error: 'runId required' });
+  const { rows } = await pool.query(
+    `SELECT id FROM generation_runs WHERE id = $1 AND user_id = $2`,
+    [runId, req.user.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Run not found' });
+  cancelledRuns.add(Number(runId));
+  await pool.query(`UPDATE generation_runs SET status = 'cancelled' WHERE id = $1`, [runId]);
+  res.json({ ok: true });
+});
 
 // Helper: save a batch of leads to DB, returns { saved, skipped }
 async function saveLeads(leads, userId, runId) {
@@ -94,7 +110,7 @@ router.post('/generate', async (req, res) => {
   let lastKnownBalance = remainingTokens;
 
   async function processKeyword(keyword, i) {
-    if (globalTokenExhausted) return;
+    if (globalTokenExhausted || cancelledRuns.has(runId)) return;
 
     // Check balance before starting this keyword
     const { rows: b } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
@@ -112,11 +128,11 @@ router.post('/generate', async (req, res) => {
       await searchPlaces(
         keyword,
         count => {
-          if (!globalTokenExhausted)
+          if (!globalTokenExhausted && !cancelledRuns.has(runId))
             send({ type: 'cell_progress', keyword, index: i, total: keywords.length, partialCount: count });
         },
         async (batchLeads) => {
-          if (globalTokenExhausted) return false;
+          if (globalTokenExhausted || cancelledRuns.has(runId)) return false;
 
           const fresh = batchLeads.filter(l => {
             if (!l.placeId || seenPlaceIds.has(l.placeId)) return false;
@@ -192,7 +208,7 @@ router.post('/generate', async (req, res) => {
   // Queue-based parallel workers — each worker picks keywords until queue is empty
   const queue = keywords.map((kw, i) => ({ kw, i }));
   async function worker() {
-    while (queue.length > 0 && !globalTokenExhausted) {
+    while (queue.length > 0 && !globalTokenExhausted && !cancelledRuns.has(runId)) {
       const item = queue.shift();
       if (!item) break;
       await processKeyword(item.kw, item.i);
@@ -201,7 +217,20 @@ router.post('/generate', async (req, res) => {
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keywords.length) }, () => worker()));
 
   // Final state
-  if (globalTokenExhausted) {
+  const wasCancelled = cancelledRuns.has(runId);
+  if (wasCancelled) cancelledRuns.delete(runId);
+
+  if (wasCancelled) {
+    // Already marked 'cancelled' by the cancel endpoint; just notify client
+    if (totalSaved > 0) {
+      await pool.query(
+        'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+        [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} (stopped)`]
+      );
+    }
+    const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
+    send({ type: 'cancelled', savedSoFar: totalSaved, tokenBalance: finalBal[0]?.tokens_balance ?? 0 });
+  } else if (globalTokenExhausted) {
     const remainingKeywords = keywords.filter((_, i) => !completedIndices.has(i));
     if (totalSaved > 0) {
       await pool.query(

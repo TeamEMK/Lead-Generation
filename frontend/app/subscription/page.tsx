@@ -419,7 +419,8 @@ export default function SubscriptionPage() {
   const isLow = sub !== null && sub.balance < 100
 
   const totalPurchased = sub?.subscriptions.reduce((a, s) => a + s.tokens_purchased, 0) ?? 0
-  const totalUsed = totalPurchased - (sub?.balance ?? 0) // accurate regardless of transaction log size
+  const totalUsedCalc = totalPurchased - (sub?.balance ?? 0)
+  const totalUsed = totalUsedCalc < 0 ? 0 : totalUsedCalc
 
   return (
     <div className="space-y-8">

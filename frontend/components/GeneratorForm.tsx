@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Zap, AlertCircle, CheckCircle2, Loader2, Hash, Mail,
-  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight, RefreshCw, WifiOff, Activity,
+  Clock, Coins, PauseCircle, PlayCircle, Tag, ArrowRight, RefreshCw, WifiOff, Activity, Square,
 } from 'lucide-react'
 import { useGeneration } from '../context/GenerationContext'
 import { fetchTokenBalance } from '../lib/api'
@@ -23,7 +23,7 @@ function fmtTime(ms: number) {
 
 export default function GeneratorForm() {
   const router = useRouter()
-  const { loading, elapsed, progress, result, paused, error, activeRun, generate, resume, clear, dismissActiveRun } = useGeneration()
+  const { loading, elapsed, progress, result, paused, error, activeRun, generate, resume, clear, stop, dismissActiveRun } = useGeneration()
   const [keywords, setKeywords] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('savedKeywords') ?? '' : ''
   )
@@ -397,16 +397,29 @@ export default function GeneratorForm() {
         </div>
       )}
 
-      {/* Generate / disabled when paused or active run pending */}
+      {/* Generate / Stop / disabled when paused or active run pending */}
       {!paused && (
-        <button
-          type="submit"
-          disabled={loading || !!activeRun}
-          className="mt-auto w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-brand-500/20 text-sm"
-        >
-          {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
-            : <><Zap className="w-4 h-4" />Generate Leads</>}
-        </button>
+        <div className="mt-auto flex gap-2">
+          <button
+            type="submit"
+            disabled={loading || !!activeRun}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-brand-400 to-brand-500 hover:from-brand-500 hover:to-brand-600 active:from-brand-700 active:to-navy-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-md shadow-brand-500/20 text-sm"
+          >
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
+              : <><Zap className="w-4 h-4" />Generate Leads</>}
+          </button>
+          {loading && (
+            <button
+              type="button"
+              onClick={stop}
+              className="flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-xl border-2 border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 font-semibold text-sm transition-all"
+              title="Stop generation"
+            >
+              <Square className="w-4 h-4 fill-current" />
+              Stop
+            </button>
+          )}
+        </div>
       )}
     </form>
   )

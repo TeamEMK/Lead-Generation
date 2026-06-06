@@ -50,6 +50,7 @@ interface GenerationContextValue {
   generate: (keywords: string[], scrapeEmails: boolean) => void
   resume: () => void
   clear: () => void
+  stop: () => void
   dismissActiveRun: () => void
 }
 
@@ -137,10 +138,35 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
   }, [activeRun?.runId])
 
+  const stop = useCallback(async () => {
+    const runId = runIdRef.current
+    if (!runId) {
+      readerRef.current?.cancel().catch(() => {})
+      setLoading(false); setProgress(null)
+      return
+    }
+    try {
+      await fetch(`${API_URL}/api/leads/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ runId }),
+      })
+    } catch {}
+    // SSE cancelled event will fire and clean up state
+  }, [])
+
   const dismissActiveRun = useCallback(() => {
+    // Cancel the backend run if it's still running
+    if (activeRun) {
+      fetch(`${API_URL}/api/leads/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ runId: activeRun.runId }),
+      }).catch(() => {})
+    }
     setActiveRun(null)
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-  }, [])
+  }, [activeRun])
 
   const _run = useCallback(async (keywords: string[], scrapeEmails: boolean, retryCount = 0, keepRunId = false) => {
     if (retryCount === 0) {
@@ -220,6 +246,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             setProgress(null)
           } else if (evt.type === 'done') {
             setResult({ saved: evt.saved, skipped: evt.skipped, tokenBalance: evt.tokenBalance ?? 0 })
+            setLiveTokenBalance(evt.tokenBalance ?? 0)
+            fetchLeads().then(setLeads).catch(() => {})
+            setProgress(null)
+            setPaused(null)
+          } else if (evt.type === 'cancelled') {
+            setResult({ saved: evt.savedSoFar, skipped: 0, tokenBalance: evt.tokenBalance ?? 0 })
             setLiveTokenBalance(evt.tokenBalance ?? 0)
             fetchLeads().then(setLeads).catch(() => {})
             setProgress(null)
@@ -305,7 +337,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   return (
-    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, liveTokenBalance, activeRun, generate, resume, clear, dismissActiveRun }}>
+    <GenerationContext.Provider value={{ loading, elapsed, progress, result, paused, leads, error, liveTokenBalance, activeRun, generate, resume, clear, stop, dismissActiveRun }}>
       {children}
     </GenerationContext.Provider>
   )
