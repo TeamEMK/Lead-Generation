@@ -7,8 +7,24 @@ const os = require('os');
 let cachedToken = null;
 let tokenExpiry = 0;
 
-const PAGE_DELAY_MS = 2000;
-const RETRY_DELAYS_MS = [2000, 5000, 12000];
+const PAGE_DELAY_MS = 300;      // was 2000 — between pages within one cell
+const CELL_DELAY_MS = 150;      // was 500 — between grid cells
+const RETRY_DELAYS_MS = [1000, 3000, 8000];  // was [2000,5000,12000]
+
+// Global semaphore — cap concurrent Places API calls across all parallel keywords
+const MAX_CONCURRENT = 3;
+let _activeCalls = 0;
+const _waiters = [];
+async function acquireSlot() {
+  while (_activeCalls >= MAX_CONCURRENT) {
+    await new Promise(r => _waiters.push(r));
+  }
+  _activeCalls++;
+}
+function releaseSlot() {
+  _activeCalls--;
+  if (_waiters.length > 0) _waiters.shift()();
+}
 
 async function getAccessToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
@@ -35,29 +51,34 @@ async function getAccessToken() {
 
 async function post(body, fieldMask) {
   const token = await getAccessToken();
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    try {
-      return await axios.post(
-        'https://places.googleapis.com/v1/places:searchText',
-        body,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'X-Goog-FieldMask': fieldMask,
-            'Content-Type': 'application/json',
-          },
-          timeout: 20000,
+  await acquireSlot();
+  try {
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      try {
+        return await axios.post(
+          'https://places.googleapis.com/v1/places:searchText',
+          body,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'X-Goog-FieldMask': fieldMask,
+              'Content-Type': 'application/json',
+            },
+            timeout: 20000,
+          }
+        );
+      } catch (err) {
+        const status = err.response?.status;
+        if ((status === 429 || status === 503) && attempt < RETRY_DELAYS_MS.length) {
+          console.warn(`Rate limit (${status}), retrying in ${RETRY_DELAYS_MS[attempt]}ms…`);
+          await sleep(RETRY_DELAYS_MS[attempt]);
+          continue;
         }
-      );
-    } catch (err) {
-      const status = err.response?.status;
-      if ((status === 429 || status === 503) && attempt < RETRY_DELAYS_MS.length) {
-        console.warn(`Rate limit (${status}), retrying in ${RETRY_DELAYS_MS[attempt]}ms…`);
-        await sleep(RETRY_DELAYS_MS[attempt]);
-        continue;
+        throw err;
       }
-      throw err;
     }
+  } finally {
+    releaseSlot();
   }
 }
 
@@ -219,7 +240,7 @@ async function gridSearchForLocation(keyword, location, originalQuery, onProgres
       console.warn(`    cell ${i + 1} failed: ${err.message}`);
     }
     if (onProgress) onProgress(all.length);
-    if (i < cells.length - 1) await sleep(500);
+    if (i < cells.length - 1) await sleep(CELL_DELAY_MS);
   }
 
   return all;
@@ -265,7 +286,7 @@ async function searchPlaces(query, onProgress, onBatch) {
       console.warn(`  "${loc}" failed: ${err.message}`);
     }
     if (exhausted) break;
-    if (i < locations.length - 1) await sleep(800);
+    if (i < locations.length - 1) await sleep(CELL_DELAY_MS);
   }
 
   const deduped = dedupeByPlaceId(all);
