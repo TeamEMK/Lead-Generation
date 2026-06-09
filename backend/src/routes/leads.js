@@ -109,6 +109,7 @@ router.post('/generate', async (req, res) => {
   // Single keyword per run — concurrency kept for the queue helper, effectively 1
   const CONCURRENCY = 1;
   let totalSaved = 0, totalSkipped = 0, totalCharged = 0;
+  const apiCalls = { pro: 0, enterprise: 0 };  // Google Places API calls, for GCP cost estimate
   let globalTokenExhausted = false;
   let completedCount = 0;
   const completedIndices = new Set();
@@ -187,7 +188,8 @@ router.post('/generate', async (req, res) => {
             return false;
           }
           return true;
-        }
+        },
+        (tier) => { if (tier === 'pro' || tier === 'enterprise') apiCalls[tier]++; }
       );
     } catch (err) {
       console.error(`searchPlaces error for "${keyword}":`, err.message);
@@ -224,6 +226,14 @@ router.post('/generate', async (req, res) => {
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keywordsToProcess.length) }, () => worker()));
+
+  // Record Google Places API usage for this run (admin GCP cost estimate)
+  if (apiCalls.pro > 0 || apiCalls.enterprise > 0) {
+    await pool.query(
+      'INSERT INTO api_usage (user_id, run_id, pro_calls, enterprise_calls) VALUES ($1, $2, $3, $4)',
+      [req.user.id, runId, apiCalls.pro, apiCalls.enterprise]
+    ).catch(err => console.error('api_usage insert failed:', err.message));
+  }
 
   // Final state
   const wasCancelled = cancelledRuns.has(runId);

@@ -27,6 +27,32 @@ export async function fetchStats() {
   }>
 }
 
+export interface Overview {
+  users: { total: number; new_30d: number; with_plan: number }
+  subscriptions: { active: number }
+  revenue: { total: number; this_month: number }
+  tokens: { sold: number; used: number; remaining: number }
+  leads: { total: number; this_month: number }
+  api: {
+    pro_total: number; ent_total: number; calls_total: number
+    pro_month: number; ent_month: number; calls_month: number
+    cost_total_inr: number; cost_month_inr: number
+  }
+  profit: { this_month: number }
+  pricing: {
+    usd_inr: number; price_pro_usd: number; price_ent_usd: number
+    free_pro: number; free_ent: number
+  }
+  trend: { date: string; revenue: number; leads: number; calls: number; cost_inr: number }[]
+  top_users: { name: string; email: string; tokens_used: number; leads: number; calls: number; cost_inr: number }[]
+}
+
+export async function fetchOverview(): Promise<Overview> {
+  const res = await fetch(`${API_URL}/api/admin/overview`, { headers: headers(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Unauthorized')
+  return res.json()
+}
+
 export interface AdminUser {
   id: number; name: string; email: string; phone: string | null
   city: string | null; business_name: string | null; gst: string | null

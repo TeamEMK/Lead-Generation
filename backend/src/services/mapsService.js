@@ -48,13 +48,15 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-async function post(body, fieldMask) {
+// tier: 'pro' (viewport lookup) or 'enterprise' (lead search). onApiCall is
+// invoked once per billable response so callers can tally GCP cost.
+async function post(body, fieldMask, tier, onApiCall) {
   const token = await getAccessToken();
   await acquireSlot();
   try {
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       try {
-        return await axios.post(
+        const res = await axios.post(
           'https://places.googleapis.com/v1/places:searchText',
           body,
           {
@@ -66,6 +68,8 @@ async function post(body, fieldMask) {
             timeout: 20000,
           }
         );
+        if (onApiCall) onApiCall(tier);
+        return res;
       } catch (err) {
         const status = err.response?.status;
         if ((status === 429 || status === 503) && attempt < RETRY_DELAYS_MS.length) {
@@ -81,14 +85,16 @@ async function post(body, fieldMask) {
   }
 }
 
-async function fetchAllPages(initialBody) {
+async function fetchAllPages(initialBody, onApiCall) {
   const results = [];
 
   // Single page only — no pagination. Keeps API cost predictable:
   // 1 call per grid cell, never 2-3. The grid itself handles coverage.
+  // Asks for phone + website → billed at Enterprise tier.
   const res = await post(
     initialBody,
-    'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri'
+    'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri',
+    'enterprise', onApiCall
   );
 
   for (const place of res.data.places || []) {
@@ -106,11 +112,12 @@ async function fetchAllPages(initialBody) {
   return results;
 }
 
-async function getLocationViewport(locationName) {
+async function getLocationViewport(locationName, onApiCall) {
   try {
     const res = await post(
       { textQuery: locationName, maxResultCount: 1 },
-      'places.viewport,places.location'
+      'places.viewport,places.location',
+      'pro', onApiCall
     );
     const place = res.data.places?.[0];
     if (place?.viewport?.low && place?.viewport?.high) return place.viewport;
@@ -189,12 +196,12 @@ function splitLocations(locationStr) {
     .filter(Boolean);
 }
 
-async function gridSearchForLocation(keyword, location, originalQuery, onProgress, onBatch) {
-  const viewport = await getLocationViewport(location);
+async function gridSearchForLocation(keyword, location, originalQuery, onProgress, onBatch, onApiCall) {
+  const viewport = await getLocationViewport(location, onApiCall);
 
   if (!viewport) {
     console.warn(`  no viewport for "${location}", falling back to text search`);
-    const results = await fetchAllPages({ textQuery: `${keyword} in ${location}`, maxResultCount: 20 });
+    const results = await fetchAllPages({ textQuery: `${keyword} in ${location}`, maxResultCount: 20 }, onApiCall);
     const mapped = results.map(l => ({ ...l, keyword: originalQuery }));
     if (onBatch) {
       const cont = await onBatch(mapped);
@@ -212,7 +219,8 @@ async function gridSearchForLocation(keyword, location, originalQuery, onProgres
   for (let i = 0; i < cells.length; i++) {
     try {
       const cellResults = await fetchAllPages(
-        { textQuery: keyword, maxResultCount: 20, locationRestriction: { rectangle: cells[i] } }
+        { textQuery: keyword, maxResultCount: 20, locationRestriction: { rectangle: cells[i] } },
+        onApiCall
       );
       const mapped = cellResults.map(l => ({ ...l, keyword: originalQuery }));
       all.push(...mapped);
@@ -236,12 +244,12 @@ async function gridSearchForLocation(keyword, location, originalQuery, onProgres
   return all;
 }
 
-async function searchPlaces(query, onProgress, onBatch) {
+async function searchPlaces(query, onProgress, onBatch, onApiCall) {
   const { keyword, locationStr } = extractLocation(query);
 
   if (!locationStr) {
     console.log(`[maps] plain search: "${query}"`);
-    const raw = dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }));
+    const raw = dedupeByPlaceId(await fetchAllPages({ textQuery: query, maxResultCount: 20 }, onApiCall));
     const results = raw.map(l => ({ ...l, keyword: query }));
     if (onBatch) {
       const cont = await onBatch(results);
@@ -268,7 +276,8 @@ async function searchPlaces(query, onProgress, onBatch) {
           const cont = await onBatch(batch);
           if (cont === false) { exhausted = true; return false; }
           return true;
-        }
+        },
+        onApiCall
       );
       all.push(...results);
       console.log(`  "${loc}" contributed ${results.length} leads (running total: ${all.length})`);

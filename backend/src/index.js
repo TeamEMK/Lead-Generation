@@ -147,6 +147,19 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Google Places API call tracking — one row per generation run, used to
+  // estimate GCP cost on the admin dashboard (calls × SKU price).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS api_usage (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      run_id INTEGER,
+      pro_calls INTEGER NOT NULL DEFAULT 0,
+      enterprise_calls INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS api_usage_created_at_idx ON api_usage (created_at)`);
   await pool.query(`
     INSERT INTO plans (name, price_inr, tokens, price_per_token, popular) VALUES
       ('Starter', 3000, 2400, 1.25, false),
