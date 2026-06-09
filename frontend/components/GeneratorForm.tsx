@@ -44,8 +44,8 @@ export default function GeneratorForm() {
     return () => window.removeEventListener('focus', check)
   }, [paused])
 
-  // One keyword per run — the whole input is a single keyword (a comma in the
-  // location part, e.g. "hotels in Mumbai, Delhi", is handled server-side).
+  // One keyword per run — commas and line breaks are stripped so users cannot
+  // enter multiple keywords or locations at once.
   const keyword = keywords.trim()
   const keywordList = keyword ? [keyword] : []
 
@@ -118,7 +118,8 @@ export default function GeneratorForm() {
         <input
           type="text"
           value={keywords}
-          onChange={e => setKeywords(e.target.value)}
+          onChange={e => setKeywords(e.target.value.replace(/[\n,]/g, ''))}
+          onKeyDown={e => { if (e.key === ',') e.preventDefault() }}
           placeholder="e.g. Pediatrician in Delhi"
           disabled={loading || !!paused}
           className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
