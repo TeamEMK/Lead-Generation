@@ -15,6 +15,7 @@ export interface GenerationRun {
   id: number
   keywords: string[]
   total_found: number
+  tokens_charged?: number
   status: 'running' | 'done' | 'paused' | 'error'
   created_at: string
 }

@@ -7,8 +7,7 @@ const os = require('os');
 let cachedToken = null;
 let tokenExpiry = 0;
 
-const PAGE_DELAY_MS = 300;      // was 2000 — between pages within one cell
-const CELL_DELAY_MS = 150;      // was 500 — between grid cells
+const CELL_DELAY_MS = 150;      // between grid cells
 const RETRY_DELAYS_MS = [1000, 3000, 8000];  // was [2000,5000,12000]
 
 // Global semaphore — cap concurrent Places API calls across all parallel keywords
@@ -84,33 +83,25 @@ async function post(body, fieldMask) {
 
 async function fetchAllPages(initialBody) {
   const results = [];
-  let pageToken = null;
 
-  do {
-    const body = { ...initialBody };
-    if (pageToken) body.pageToken = pageToken;
+  // Single page only — no pagination. Keeps API cost predictable:
+  // 1 call per grid cell, never 2-3. The grid itself handles coverage.
+  const res = await post(
+    initialBody,
+    'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri'
+  );
 
-    const res = await post(
-      body,
-      'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,nextPageToken'
-    );
-
-    for (const place of res.data.places || []) {
-      results.push({
-        timestamp:    new Date().toISOString(),
-        businessName: place.displayName?.text || '',
-        phone:        place.nationalPhoneNumber || '',
-        website:      place.websiteUri || '',
-        email:        '',
-        address:      place.formattedAddress || '',
-        placeId:      place.id || '',
-      });
-    }
-
-    pageToken = res.data.nextPageToken || null;
-    if (pageToken) await sleep(PAGE_DELAY_MS);
-
-  } while (pageToken);
+  for (const place of res.data.places || []) {
+    results.push({
+      timestamp:    new Date().toISOString(),
+      businessName: place.displayName?.text || '',
+      phone:        place.nationalPhoneNumber || '',
+      website:      place.websiteUri || '',
+      email:        '',
+      address:      place.formattedAddress || '',
+      placeId:      place.id || '',
+    });
+  }
 
   return results;
 }
@@ -141,11 +132,10 @@ function chooseGridSize(viewport) {
     Math.abs(viewport.high.latitude  - viewport.low.latitude),
     Math.abs(viewport.high.longitude - viewport.low.longitude)
   );
-  if (span >= 8)    return 5;
-  if (span >= 2)    return 4;
-  if (span >= 0.5)  return 3;
-  if (span >= 0.15) return 2;
-  return 1;
+  if (span >= 2)    return 5;   // country/large region → 5×5 = 25 cells
+  if (span >= 0.5)  return 3;   // state/province → 3×3 = 9 cells
+  if (span >= 0.15) return 2;   // city/metro → 2×2 = 4 cells
+  return 1;                     // town → 1×1 = 1 cell
 }
 
 function buildGrid(viewport, n) {

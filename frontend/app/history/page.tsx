@@ -191,9 +191,11 @@ function RunRow({ run, index, total }: { run: GenerationRun; index: number; tota
           <StatusBadge status={run.status ?? 'done'} />
         </td>
         <td className="px-5 py-3.5 text-right">
-          <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white" title="Leads generated / tokens charged (1 lead = 1 token)">
             <Hash className="w-3.5 h-3.5 text-brand-500" />
-            {run.total_found.toLocaleString()}
+            {(run.tokens_charged || run.total_found).toLocaleString()}
+            <span className="text-slate-400 dark:text-slate-500 font-normal">/</span>
+            <span className="text-amber-600 dark:text-amber-400">{(run.tokens_charged || run.total_found).toLocaleString()}</span>
           </span>
         </td>
         <td className="px-5 py-3.5 text-right">
@@ -251,7 +253,7 @@ export default function HistoryPage() {
 
   useEffect(() => { load() }, [load])
 
-  const totalLeads = runs.reduce((acc, r) => acc + r.total_found, 0)
+  const totalTokens = runs.reduce((acc, r) => acc + (r.tokens_charged || r.total_found), 0)
 
   return (
     <div className="space-y-8">
@@ -263,7 +265,7 @@ export default function HistoryPage() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Generation History</h1>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-            {loading ? 'Loading…' : `${runs.length} run${runs.length !== 1 ? 's' : ''} · ${totalLeads.toLocaleString()} total leads saved`}
+            {loading ? 'Loading…' : `${runs.length} run${runs.length !== 1 ? 's' : ''} · ${totalTokens.toLocaleString()} leads · ${totalTokens.toLocaleString()} tokens used`}
           </p>
         </div>
         <button onClick={load} disabled={loading}
@@ -295,7 +297,7 @@ export default function HistoryPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">#</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Keywords</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Leads</th>
+                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Leads / Tokens</th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -308,7 +310,11 @@ export default function HistoryPage() {
               <tfoot>
                 <tr className="border-t border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02]">
                   <td colSpan={3} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-900 dark:text-white">{totalLeads.toLocaleString()}</td>
+                  <td className="px-5 py-3 text-right font-bold text-slate-900 dark:text-white">
+                    {totalTokens.toLocaleString()}
+                    <span className="text-slate-400 dark:text-slate-500 font-normal"> / </span>
+                    <span className="text-amber-600 dark:text-amber-400">{totalTokens.toLocaleString()}</span>
+                  </td>
                   <td />
                 </tr>
               </tfoot>

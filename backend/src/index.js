@@ -61,6 +61,7 @@ async function initDb() {
     )
   `);
   await pool.query(`ALTER TABLE generation_runs ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'done'`);
+  await pool.query(`ALTER TABLE generation_runs ADD COLUMN IF NOT EXISTS tokens_charged INTEGER NOT NULL DEFAULT 0`);
   // Global deduplicated lead data — shared across users
   await pool.query(`
     CREATE TABLE IF NOT EXISTS leads (

@@ -44,13 +44,15 @@ export default function GeneratorForm() {
     return () => window.removeEventListener('focus', check)
   }, [paused])
 
-  const keywordList = keywords.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
-  const keywordCount = keywordList.length
+  // One keyword per run — the whole input is a single keyword (a comma in the
+  // location part, e.g. "hotels in Mumbai, Delhi", is handled server-side).
+  const keyword = keywords.trim()
+  const keywordList = keyword ? [keyword] : []
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (keywordList.length === 0) return
-    generate(keywordList, scrapeEmails)
+    if (!keyword) return
+    generate([keyword], scrapeEmails)
   }
 
   const barPct = progress
@@ -104,43 +106,29 @@ export default function GeneratorForm() {
       {/* Keywords */}
       <div className="flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Keywords</label>
-          {keywordCount > 0 ? (
+          <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Keyword</label>
+          {keyword ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-500/20">
-              <Hash className="w-3 h-3" />{keywordCount} keyword{keywordCount > 1 ? 's' : ''}
+              <Hash className="w-3 h-3" />1 keyword
             </span>
           ) : (
-            <span className="text-xs text-slate-400 dark:text-slate-500">one per line or comma</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">one keyword only</span>
           )}
         </div>
-        <textarea
+        <input
+          type="text"
           value={keywords}
           onChange={e => setKeywords(e.target.value)}
-          placeholder={[
-            '# Single city — any country',
-            'hotels in Mumbai',
-            'restaurants in Dubai',
-            'clinics in New York',
-            'salons in London',
-            '',
-            '# Multiple cities (comma-separated)',
-            'hotels in Mumbai, Delhi, Bangalore',
-            'restaurants in Paris, Berlin, Rome',
-            '',
-            '# State / province / country',
-            'hotels in Maharashtra',
-            'car dealers in California',
-            'IT companies in India',
-          ].join('\n')}
+          placeholder="e.g. Pediatrician in Delhi"
           disabled={loading || !!paused}
-          className="flex-1 w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm font-mono resize-none transition-colors leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <div className="mt-2 space-y-1">
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            One per line · works for <span className="font-semibold text-slate-500 dark:text-slate-400">any city, state, or country worldwide</span> · comma-separate for multiple cities
+            One keyword only · add a location: <span className="font-semibold text-slate-500 dark:text-slate-400">in Delhi</span> (city), <span className="font-semibold text-slate-500 dark:text-slate-400">in Maharashtra</span> (state), <span className="font-semibold text-slate-500 dark:text-slate-400">in India</span> (country)
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            1 token per lead saved · duplicates auto-skipped
+            1 token per lead · duplicates are <span className="font-semibold text-slate-500 dark:text-slate-400">charged but not saved</span>
           </p>
         </div>
       </div>
@@ -351,8 +339,8 @@ export default function GeneratorForm() {
             {result.saved} new lead{result.saved !== 1 ? 's' : ''} saved
           </div>
           {result.skipped > 0 && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-500 ml-6">
-              {result.skipped} duplicate{result.skipped !== 1 ? 's' : ''} skipped
+            <p className="text-xs text-amber-600 dark:text-amber-500 ml-6">
+              {result.skipped} duplicate{result.skipped !== 1 ? 's' : ''} charged (already in your leads — not saved again)
             </p>
           )}
           <div className="flex items-center gap-1.5 ml-6 text-xs text-slate-400 dark:text-slate-500">

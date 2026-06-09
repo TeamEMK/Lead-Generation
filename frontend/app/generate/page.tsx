@@ -30,17 +30,18 @@ function downloadCSV(leads: Lead[]) {
 }
 
 const HOW_IT_WORKS = [
-  { step: '01', icon: Search,   title: 'Enter keywords', desc: 'Type business categories you want to target — one per line or comma-separated.', color: 'indigo' },
-  { step: '02', icon: Search,   title: 'We search Maps',  desc: 'Our engine fetches every result from Google Maps for each keyword.', color: 'violet' },
-  { step: '03', icon: Database, title: 'Auto-saved',      desc: 'Leads save instantly to your database. Duplicates are skipped automatically.', color: 'emerald' },
+  { step: '01', icon: Search,   title: 'Enter a keyword', desc: 'Type one business category with a location — e.g. "dentist in Mumbai".', color: 'indigo' },
+  { step: '02', icon: Search,   title: 'We search Maps',  desc: 'Our engine scans Google Maps across your chosen area and pulls matching businesses.', color: 'violet' },
+  { step: '03', icon: Database, title: 'Auto-saved',      desc: 'Leads save instantly to your database with phone, website & address — each business stored once.', color: 'emerald' },
 ]
 
 const TIPS = [
-  'Use simple category names like "hotel" or "hospital" — not full sentences',
-  'Add a city to your keyword (e.g. "dentist Mumbai") for local results',
-  'Run the same keywords across different cities to scale up quickly',
+  'Use a simple category plus a location, e.g. "hotel in Jaipur"',
+  'Add a city for dense, local results — "dentist in Mumbai"',
+  'Add a state or country for wider reach — "hotels in India"',
+  'Run the same keyword across different cities to scale up',
+  'Comma-separate cities to cover several at once — "cafes in Delhi, Mumbai"',
   'Leads with a website are easiest to find contact info for',
-  'Comma-separate cities to search multiple locations in one go',
   'Enable email scraping only when you need contacts — it adds time per lead',
   'Export to CSV after each run so you always have a fresh backup',
 ]

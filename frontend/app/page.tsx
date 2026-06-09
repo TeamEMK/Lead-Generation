@@ -16,7 +16,7 @@ const FEATURES = [
   {
     icon: MapPin,
     title: 'Pan-India Google Maps Search',
-    desc: 'Search any business category in any city, state, or region across India. We extract every result — no limits, no manual scrolling.',
+    desc: 'Search any business category in any city, state, or region across India — no manual scrolling, no spreadsheets.',
     color: 'indigo',
   },
   {
@@ -33,8 +33,8 @@ const FEATURES = [
   },
   {
     icon: Shield,
-    title: 'Zero Duplicate Charges',
-    desc: 'If a lead already exists in your account, it\'s skipped automatically. You are only charged tokens for genuinely new leads.',
+    title: 'No Duplicate Clutter',
+    desc: 'Every business is stored only once in your database, so your lead list stays clean and ready to use.',
     color: 'amber',
   },
   {
@@ -55,20 +55,20 @@ const STEPS = [
   {
     number: '01',
     icon: Layers,
-    title: 'Enter your keywords',
-    desc: 'Type business categories you want to target — "hotel", "dental clinic", "car dealership". One per line.',
+    title: 'Enter your keyword',
+    desc: 'Type one business category with a location — "hotel in Jaipur", "dental clinic in Mumbai".',
   },
   {
     number: '02',
     icon: MapPin,
     title: 'We search Google Maps',
-    desc: 'Our engine fetches every business result for each keyword, complete with phone, website, and address.',
+    desc: 'Our engine scans Google Maps across your chosen area and pulls matching businesses, complete with phone, website, and address.',
   },
   {
     number: '03',
     icon: Database,
     title: 'Leads land in your Sheet',
-    desc: 'Results are saved instantly to your private database. Duplicates are skipped automatically — no extra tokens charged.',
+    desc: 'Results are saved instantly to your private database, each business stored just once — ready to filter and export.',
   },
 ]
 
@@ -577,7 +577,7 @@ export default function LandingPage() {
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
               <span className="text-emerald-500 mt-0.5 flex-shrink-0">✓</span>
               <p className="text-sm text-emerald-800 dark:text-emerald-300">
-                <span className="font-semibold">Duplicate leads never cost a token.</span> If a lead already exists in your account, it's skipped automatically — you're only charged for genuinely new leads.
+                <span className="font-semibold">1 token = 1 lead.</span> Every business is stored only once in your account, so your lead list always stays clean and clutter-free.
               </p>
             </div>
           </div>

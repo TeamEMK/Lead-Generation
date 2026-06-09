@@ -58,6 +58,12 @@ router.post('/generate', async (req, res) => {
   if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
     return res.status(400).json({ error: 'Keywords array is required' });
   }
+  // Single keyword only — use the first non-empty entry, ignore the rest
+  const singleKeyword = String(keywords[0] ?? '').trim();
+  if (!singleKeyword) {
+    return res.status(400).json({ error: 'A keyword is required' });
+  }
+  const keywordsToProcess = [singleKeyword];
 
   // Token gate — check before opening SSE stream
   const { rows: balRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
@@ -94,15 +100,15 @@ router.post('/generate', async (req, res) => {
   if (!runId) {
     const runRes = await pool.query(
       `INSERT INTO generation_runs (user_id, keywords, total_found, status) VALUES ($1, $2, $3, 'running') RETURNING id`,
-      [req.user.id, keywords, 0]
+      [req.user.id, keywordsToProcess, 0]
     );
     runId = runRes.rows[0].id;
   }
   send({ type: 'started', runId });
 
-  // Process 5 keywords in parallel using a shared queue
-  const CONCURRENCY = 5;
-  let totalSaved = 0, totalSkipped = 0;
+  // Single keyword per run — concurrency kept for the queue helper, effectively 1
+  const CONCURRENCY = 1;
+  let totalSaved = 0, totalSkipped = 0, totalCharged = 0;
   let globalTokenExhausted = false;
   let completedCount = 0;
   const completedIndices = new Set();
@@ -118,18 +124,19 @@ router.post('/generate', async (req, res) => {
     if (lastKnownBalance <= 0) { globalTokenExhausted = true; return; }
 
     const kwStart = Date.now();
-    send({ type: 'searching', keyword, index: i, total: keywords.length });
+    send({ type: 'searching', keyword, index: i, total: keywordsToProcess.length });
 
     let tokenExhaustedMidSearch = false;
     const seenPlaceIds = new Set();
     let kwSaved = 0;
+    let kwCharged = 0;
 
     try {
       await searchPlaces(
         keyword,
         count => {
           if (!globalTokenExhausted && !cancelledRuns.has(runId))
-            send({ type: 'cell_progress', keyword, index: i, total: keywords.length, partialCount: count });
+            send({ type: 'cell_progress', keyword, index: i, total: keywordsToProcess.length, partialCount: count });
         },
         async (batchLeads) => {
           if (globalTokenExhausted || cancelledRuns.has(runId)) return false;
@@ -161,17 +168,16 @@ router.post('/generate', async (req, res) => {
           const actuallyDeducted = atomicRows[0].old_bal - atomicRows[0].new_bal;
           lastKnownBalance = atomicRows[0].new_bal;
 
+          // Tokens stay deducted even for cross-run duplicates — they are charged but
+          // NOT stored (saveLeads silently drops rows that already exist in user_leads).
+          kwCharged += actuallyDeducted;
+          totalCharged += actuallyDeducted;
+
           const toSave = fresh.slice(0, actuallyDeducted);
           const { saved, skipped } = await saveLeads(toSave, req.user.id, runId);
           totalSaved += saved;
           totalSkipped += skipped;
           kwSaved += saved;
-
-          // Refund tokens for duplicates (DB unique constraint rejections)
-          if (saved < actuallyDeducted) {
-            await pool.query('UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2', [actuallyDeducted - saved, req.user.id]);
-            lastKnownBalance += (actuallyDeducted - saved);
-          }
 
           send({ type: 'token_update', tokenBalance: lastKnownBalance, totalSaved });
 
@@ -185,11 +191,14 @@ router.post('/generate', async (req, res) => {
       );
     } catch (err) {
       console.error(`searchPlaces error for "${keyword}":`, err.message);
-      send({ type: 'keyword_error', keyword, index: i, total: keywords.length, message: err.message });
+      send({ type: 'keyword_error', keyword, index: i, total: keywordsToProcess.length, message: err.message });
     }
 
-    if (kwSaved > 0) {
-      await pool.query('UPDATE generation_runs SET total_found = total_found + $1 WHERE id = $2', [kwSaved, runId]);
+    if (kwSaved > 0 || kwCharged > 0) {
+      await pool.query(
+        'UPDATE generation_runs SET total_found = total_found + $1, tokens_charged = tokens_charged + $2 WHERE id = $3',
+        [kwSaved, kwCharged, runId]
+      );
     }
 
     if (!tokenExhaustedMidSearch) {
@@ -198,15 +207,15 @@ router.post('/generate', async (req, res) => {
       const elapsed = Date.now() - kwStart;
       kwDurations.push(elapsed);
       const avgMs = kwDurations.reduce((a, b) => a + b, 0) / kwDurations.length;
-      const remaining = keywords.length - completedCount;
+      const remaining = keywordsToProcess.length - completedCount;
       // ETA accounts for parallelism: remaining / workers × avg time per keyword
       const etaMs = Math.round((remaining / Math.min(CONCURRENCY, remaining + 1)) * avgMs);
-      send({ type: 'keyword_done', keyword, index: i, total: keywords.length, found: kwSaved, totalSoFar: totalSaved, elapsedMs: elapsed, etaMs, tokenBalance: lastKnownBalance });
+      send({ type: 'keyword_done', keyword, index: i, total: keywordsToProcess.length, found: kwSaved, totalSoFar: totalSaved, elapsedMs: elapsed, etaMs, tokenBalance: lastKnownBalance });
     }
   }
 
   // Queue-based parallel workers — each worker picks keywords until queue is empty
-  const queue = keywords.map((kw, i) => ({ kw, i }));
+  const queue = keywordsToProcess.map((kw, i) => ({ kw, i }));
   async function worker() {
     while (queue.length > 0 && !globalTokenExhausted && !cancelledRuns.has(runId)) {
       const item = queue.shift();
@@ -214,7 +223,7 @@ router.post('/generate', async (req, res) => {
       await processKeyword(item.kw, item.i);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keywords.length) }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keywordsToProcess.length) }, () => worker()));
 
   // Final state
   const wasCancelled = cancelledRuns.has(runId);
@@ -222,20 +231,20 @@ router.post('/generate', async (req, res) => {
 
   if (wasCancelled) {
     // Already marked 'cancelled' by the cancel endpoint; just notify client
-    if (totalSaved > 0) {
+    if (totalCharged > 0) {
       await pool.query(
         'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-        [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} (stopped)`]
+        [req.user.id, 'usage', -totalCharged, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''}, ${totalCharged} token${totalCharged !== 1 ? 's' : ''} used (stopped)`]
       );
     }
     const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
     send({ type: 'cancelled', savedSoFar: totalSaved, tokenBalance: finalBal[0]?.tokens_balance ?? 0 });
   } else if (globalTokenExhausted) {
-    const remainingKeywords = keywords.filter((_, i) => !completedIndices.has(i));
-    if (totalSaved > 0) {
+    const remainingKeywords = keywordsToProcess.filter((_, i) => !completedIndices.has(i));
+    if (totalCharged > 0) {
       await pool.query(
         'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-        [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} from ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''} (paused)`]
+        [req.user.id, 'usage', -totalCharged, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''}, ${totalCharged} token${totalCharged !== 1 ? 's' : ''} used (paused)`]
       );
     }
     const { rows: finalBal } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
@@ -243,10 +252,10 @@ router.post('/generate', async (req, res) => {
     send({ type: 'token_exhausted', remainingKeywords, savedSoFar: totalSaved, tokenBalance: finalBal[0]?.tokens_balance ?? 0 });
   } else {
     await pool.query(`UPDATE generation_runs SET status = 'done' WHERE id = $1`, [runId]);
-    if (totalSaved > 0) {
+    if (totalCharged > 0) {
       await pool.query(
         'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
-        [req.user.id, 'usage', -totalSaved, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''} from ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''}`]
+        [req.user.id, 'usage', -totalCharged, `Generated ${totalSaved} lead${totalSaved !== 1 ? 's' : ''}, ${totalCharged} token${totalCharged !== 1 ? 's' : ''} used`]
       );
     }
     const { rows: finalBalRows } = await pool.query('SELECT tokens_balance FROM users WHERE id = $1', [req.user.id]);
@@ -319,7 +328,7 @@ router.get('/history', async (req, res) => {
       [req.user.id]
     );
     const { rows } = await pool.query(
-      'SELECT id, keywords, total_found, status, created_at FROM generation_runs WHERE user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, keywords, total_found, tokens_charged, status, created_at FROM generation_runs WHERE user_id = $1 ORDER BY created_at DESC',
       [req.user.id]
     );
     res.json({ runs: rows });
@@ -334,7 +343,7 @@ router.get('/history/:runId', async (req, res) => {
     const runId = parseInt(req.params.runId, 10);
     // Verify ownership
     const { rows: run } = await pool.query(
-      'SELECT id, keywords, total_found, status, created_at FROM generation_runs WHERE id = $1 AND user_id = $2',
+      'SELECT id, keywords, total_found, tokens_charged, status, created_at FROM generation_runs WHERE id = $1 AND user_id = $2',
       [runId, req.user.id]
     );
     if (!run.length) return res.status(404).json({ error: 'Run not found' });
