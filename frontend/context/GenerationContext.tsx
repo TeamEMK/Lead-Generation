@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
-import { fetchLeads } from '../lib/api'
+import { fetchLeads, fetchRunLeads } from '../lib/api'
 import type { Lead } from '../lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
@@ -75,6 +75,17 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const runIdRef = useRef<number | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Show only THIS run's leads in the generator panel (not the whole account).
+  // Falls back to all leads if the run id is unknown.
+  const loadRunLeads = useCallback((runId?: number | null) => {
+    const rid = runId ?? runIdRef.current
+    if (rid) {
+      fetchRunLeads(rid).then(d => setLeads(d.leads)).catch(() => {})
+    } else {
+      fetchLeads().then(setLeads).catch(() => {})
+    }
+  }, [])
+
   // Elapsed timer for active SSE generation
   useEffect(() => {
     if (loading) {
@@ -131,7 +142,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           // Run finished — fetch leads and show result
           clearInterval(pollRef.current!); pollRef.current = null
           setActiveRun(null)
-          fetchLeads().then(setLeads).catch(() => {})
+          loadRunLeads(runId)
         }
       } catch {}
     }, 3000)
@@ -234,7 +245,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           } else if (evt.type === 'keyword_error') {
             setProgress(p => p ? { ...p, phase: 'error' } : p)
           } else if (evt.type === 'token_exhausted') {
-            fetchLeads().then(setLeads).catch(() => {})
+            loadRunLeads()
             setPaused({
               remainingKeywords: evt.remainingKeywords ?? [],
               savedSoFar: evt.savedSoFar ?? 0,
@@ -247,13 +258,13 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           } else if (evt.type === 'done') {
             setResult({ saved: evt.saved, skipped: evt.skipped, tokenBalance: evt.tokenBalance ?? 0 })
             setLiveTokenBalance(evt.tokenBalance ?? 0)
-            fetchLeads().then(setLeads).catch(() => {})
+            loadRunLeads()
             setProgress(null)
             setPaused(null)
           } else if (evt.type === 'cancelled') {
             setResult({ saved: evt.savedSoFar, skipped: 0, tokenBalance: evt.tokenBalance ?? 0 })
             setLiveTokenBalance(evt.tokenBalance ?? 0)
-            fetchLeads().then(setLeads).catch(() => {})
+            loadRunLeads()
             setProgress(null)
             setPaused(null)
           } else if (evt.type === 'error') {
@@ -277,7 +288,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       } else if (!err.message?.startsWith('INSUFFICIENT_TOKENS')) {
         const nextIdx = lastCompletedIdxRef.current + 1
         const remaining = nextIdx > 0 && nextIdx < keywords.length ? keywords.slice(nextIdx) : keywords
-        fetchLeads().then(setLeads).catch(() => {})
+        loadRunLeads()
         setPaused({
           remainingKeywords: remaining,
           savedSoFar: totalSavedRef.current,
