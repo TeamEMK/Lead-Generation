@@ -44,6 +44,11 @@ export interface Overview {
     users_paid_total: number; users_paid_month: number
     profit_total: number; profit_month: number; margin_pct: number
   }
+  outscraper: {
+    recharged_usd: number; recharged_inr: number
+    spent_usd: number; spent_inr: number
+    remaining_usd: number; records_total: number
+  }
   pricing: {
     usd_inr: number; price_pro_usd: number; price_ent_usd: number
     free_pro: number; free_ent: number
@@ -104,6 +109,40 @@ export async function fetchTokenActivity(): Promise<TokenActivity[]> {
   const res = await fetch(`${API_URL}/api/admin/token-activity`, { headers: headers(), cache: 'no-store' })
   if (!res.ok) throw new Error('Unauthorized')
   return (await res.json()).activity
+}
+
+export interface AdminLead {
+  id: number; keyword: string; assigned_at: string
+  business_name: string; phone: string; website: string; email: string; address: string
+  user_name: string; user_email: string
+}
+
+export async function fetchLeads(): Promise<{ leads: AdminLead[]; total: number }> {
+  const res = await fetch(`${API_URL}/api/admin/leads`, { headers: headers(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Unauthorized')
+  return res.json()
+}
+
+export interface Recharge {
+  id: number; amount_usd: number; note: string; created_at: string
+}
+
+export async function fetchRecharges(): Promise<{ recharges: Recharge[]; total_usd: number }> {
+  const res = await fetch(`${API_URL}/api/admin/outscraper-recharges`, { headers: headers(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Unauthorized')
+  return res.json()
+}
+
+export async function addRecharge(amount_usd: number, note: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/outscraper-recharges`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ amount_usd, note }),
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to add recharge')
+}
+
+export async function deleteRecharge(id: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/outscraper-recharges/${id}`, { method: 'DELETE', headers: headers() })
+  if (!res.ok) throw new Error('Failed to delete recharge')
 }
 
 export interface AdminTransaction {

@@ -125,6 +125,43 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+// Outscraper recharges — list all logged top-ups + total
+router.get('/outscraper-recharges', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id, amount_usd, note, created_at FROM outscraper_recharges ORDER BY created_at DESC');
+    const total_usd = rows.reduce((a, r) => a + parseFloat(r.amount_usd), 0);
+    res.json({ recharges: rows, total_usd: Math.round(total_usd * 100) / 100 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Log a new Outscraper recharge
+router.post('/outscraper-recharges', async (req, res) => {
+  try {
+    const amount = parseFloat(req.body.amount_usd);
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'A positive amount_usd is required' });
+    const note = String(req.body.note || '').slice(0, 200);
+    const { rows } = await pool.query(
+      'INSERT INTO outscraper_recharges (amount_usd, note) VALUES ($1, $2) RETURNING id, amount_usd, note, created_at',
+      [amount, note]
+    );
+    res.status(201).json({ recharge: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a recharge entry (in case of a mistake)
+router.delete('/outscraper-recharges/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM outscraper_recharges WHERE id = $1', [parseInt(req.params.id, 10)]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Token activity — every generation run with the keyword the user searched
 router.get('/token-activity', async (req, res) => {
   try {
@@ -147,6 +184,26 @@ router.get('/token-activity', async (req, res) => {
       user_email: r.user_email,
     }));
     res.json({ activity });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// All leads in the DB — every generated lead with its owner and keyword
+router.get('/leads', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT ul.id, ul.keyword, ul.assigned_at,
+             l.business_name, l.phone, l.website, l.email, l.address,
+             u.name AS user_name, u.email AS user_email
+      FROM user_leads ul
+      JOIN leads l ON l.id = ul.lead_id
+      JOIN users u ON u.id = ul.user_id
+      ORDER BY ul.assigned_at DESC
+      LIMIT 5000
+    `);
+    const { rows: totalRows } = await pool.query('SELECT COUNT(*) AS c FROM user_leads');
+    res.json({ leads: rows, total: parseInt(totalRows[0].c, 10) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -267,6 +324,19 @@ router.get('/overview', async (req, res) => {
       };
     });
 
+    // Outscraper credit balance: manually-logged recharges vs estimated spend
+    const rechargeRes = await pool.query('SELECT COALESCE(SUM(amount_usd), 0) total_usd FROM outscraper_recharges');
+    const recharged_usd = parseFloat(rechargeRes.rows[0].total_usd) || 0;
+    const spent_usd = Math.round(entTotal * PRICE_ENT_USD * 100) / 100;   // gross list estimate
+    const outscraper = {
+      recharged_usd,
+      recharged_inr: Math.round(recharged_usd * USD_INR),
+      spent_usd,
+      spent_inr: Math.round(spent_usd * USD_INR),
+      remaining_usd: Math.round((recharged_usd - spent_usd) * 100) / 100,
+      records_total: entTotal,
+    };
+
     const revenueTotal = parseFloat(s.revenue_total) || 0;
     const economics = {
       we_spent_total: Math.round(costTotal * 100) / 100,        // Outscraper, all-time (list price)
@@ -296,6 +366,7 @@ router.get('/overview', async (req, res) => {
       },
       profit: { this_month: Math.round((revenueMonth - costMonth) * 100) / 100 },
       economics,
+      outscraper,
       pricing: {
         usd_inr: USD_INR, price_pro_usd: PRICE_PRO_USD, price_ent_usd: PRICE_ENT_USD,
         free_pro: FREE_PRO, free_ent: FREE_ENT,

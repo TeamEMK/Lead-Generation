@@ -3,14 +3,14 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, CreditCard, ArrowLeftRight, FileText, LogOut, Activity,
+  LayoutDashboard, Users, CreditCard, FileText, LogOut, Activity, Building2,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/users', label: 'Users', icon: Users },
+  { href: '/dashboard/leads', label: 'Leads', icon: Building2 },
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: CreditCard },
-  { href: '/dashboard/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { href: '/dashboard/token-activity', label: 'Token Activity', icon: Activity },
   { href: '/dashboard/invoices', label: 'Invoices', icon: FileText },
 ]

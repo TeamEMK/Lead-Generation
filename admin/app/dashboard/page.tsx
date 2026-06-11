@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { fetchOverview, type Overview } from '../../lib/api'
+import { fetchOverview, addRecharge, type Overview } from '../../lib/api'
 import {
   Users, CreditCard, IndianRupee, TrendingUp, MapPin, Coins,
   Cloud, Wallet, RefreshCw, Server, ArrowUpRight, ArrowDownRight,
@@ -78,11 +78,25 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const [amt, setAmt] = useState('')
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+
   const load = () => {
     setLoading(true)
     fetchOverview().then(setO).catch(e => setError(e.message)).finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  const submitRecharge = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const n = parseFloat(amt)
+    if (!n || n <= 0) return
+    setSaving(true)
+    try { await addRecharge(n, note); setAmt(''); setNote(''); load() }
+    catch (err: any) { setError(err.message) }
+    finally { setSaving(false) }
+  }
 
   if (error) {
     return (
@@ -218,6 +232,43 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-500 mt-1">Before monthly free credits</p>
           </div>
         </div>
+      </div>
+
+      {/* ── Outscraper credit balance (manual recharges) ── */}
+      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Wallet className="w-4 h-4 text-emerald-400" />
+          <h2 className="text-sm font-semibold text-white">Outscraper credit balance</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mb-5">
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Recharged</p>
+            <p className="text-2xl font-bold text-emerald-400">${o.outscraper.recharged_usd.toLocaleString('en-US')}</p>
+            <p className="text-xs text-slate-500">{inr(o.outscraper.recharged_inr)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Spent (est.)</p>
+            <p className="text-2xl font-bold text-sky-400">${o.outscraper.spent_usd.toLocaleString('en-US')}</p>
+            <p className="text-xs text-slate-500">{num(o.outscraper.records_total)} records</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Remaining (est.)</p>
+            <p className={`text-2xl font-bold ${o.outscraper.remaining_usd >= 0 ? 'text-white' : 'text-rose-400'}`}>${o.outscraper.remaining_usd.toLocaleString('en-US')}</p>
+          </div>
+        </div>
+        <form onSubmit={submitRecharge} className="flex flex-wrap items-center gap-2">
+          <input value={amt} onChange={e => setAmt(e.target.value)} type="number" step="0.01" min="0" placeholder="Amount (USD)"
+            className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-36" />
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)"
+            className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 flex-1 min-w-[140px]" />
+          <button type="submit" disabled={saving}
+            className="px-4 py-2 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition whitespace-nowrap">
+            {saving ? 'Adding…' : '+ Add recharge'}
+          </button>
+        </form>
+        <p className="text-xs text-slate-500 mt-2">
+          Spent is estimated from records × ${o.pricing.price_ent_usd}/record. Log each Outscraper top-up to track remaining credit.
+        </p>
       </div>
 
       {/* ── Trends ── */}

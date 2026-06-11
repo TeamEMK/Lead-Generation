@@ -164,6 +164,15 @@ async function initDb() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS api_usage_created_at_idx ON api_usage (created_at)`);
+  // Outscraper account recharges — manually logged top-ups, to track credit balance
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS outscraper_recharges (
+      id SERIAL PRIMARY KEY,
+      amount_usd NUMERIC(10,2) NOT NULL,
+      note TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
   await pool.query(`
     INSERT INTO plans (name, price_inr, tokens, price_per_token, popular) VALUES
       ('Starter', 3000, 2400, 1.25, false),
