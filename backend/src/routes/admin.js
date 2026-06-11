@@ -111,14 +111,16 @@ router.get('/invoices', async (req, res) => {
   }
 });
 
-// ── Google Places API (New) pricing — used to estimate GCP cost from call counts
-const PRICE_PRO_USD = 0.032;   // Text Search Pro (viewport lookup) per call
-const PRICE_ENT_USD = 0.035;   // Text Search Enterprise (lead search) per call
-const FREE_PRO = 5000;         // free Pro calls per month
-const FREE_ENT = 1000;         // free Enterprise calls per month
+// ── Outscraper Google Maps pricing — used to estimate vendor cost from records.
+// enterprise_calls now stores the number of Outscraper records returned (the
+// only cost driver); pro_calls is unused (kept for schema/response compatibility).
+const PRICE_PRO_USD = 0;       // no separate viewport/lookup call with Outscraper
+const PRICE_ENT_USD = 0.003;   // ~$3 / 1000 returned records (basic listing)
+const FREE_PRO = 0;
+const FREE_ENT = 500;          // first 500 records per month are free
 const USD_INR = parseFloat(process.env.USD_INR_RATE) || 88;
 
-// Full owner overview — money, tokens, users, GCP cost estimate, 30-day trend, top users
+// Full owner overview — money, tokens, users, Outscraper cost estimate, 30-day trend, top users
 router.get('/overview', async (req, res) => {
   try {
     const [users, subs, tokensUsed, tokensRemaining, leads, api,

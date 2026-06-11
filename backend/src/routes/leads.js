@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { searchPlaces } = require('../services/mapsService');
+const { searchPlaces } = require('../services/outscraperService');
 const { scrapeEmailsForLeads } = require('../services/emailScraperService');
 const requireAuth = require('../middleware/auth');
 const pool = require('../db');
@@ -109,7 +109,7 @@ router.post('/generate', async (req, res) => {
   // Single keyword per run — concurrency kept for the queue helper, effectively 1
   const CONCURRENCY = 1;
   let totalSaved = 0, totalSkipped = 0, totalCharged = 0;
-  const apiCalls = { pro: 0, enterprise: 0 };  // Google Places API calls, for GCP cost estimate
+  const apiCalls = { pro: 0, enterprise: 0 };  // enterprise = Outscraper records returned, for cost estimate
   let globalTokenExhausted = false;
   let completedCount = 0;
   const completedIndices = new Set();
@@ -135,9 +135,10 @@ router.post('/generate', async (req, res) => {
     try {
       await searchPlaces(
         keyword,
+        { maxResults: lastKnownBalance },   // never fetch more leads than the user can pay for
         count => {
           if (!globalTokenExhausted && !cancelledRuns.has(runId))
-            send({ type: 'cell_progress', keyword, index: i, total: keywordsToProcess.length, partialCount: count });
+            send({ type: 'lead_progress', keyword, index: i, total: keywordsToProcess.length, partialCount: count });
         },
         async (batchLeads) => {
           if (globalTokenExhausted || cancelledRuns.has(runId)) return false;
@@ -189,7 +190,7 @@ router.post('/generate', async (req, res) => {
           }
           return true;
         },
-        (tier) => { if (tier === 'pro' || tier === 'enterprise') apiCalls[tier]++; }
+        (records) => { apiCalls.enterprise += records; }   // Outscraper bills per returned record
       );
     } catch (err) {
       console.error(`searchPlaces error for "${keyword}":`, err.message);
@@ -227,7 +228,7 @@ router.post('/generate', async (req, res) => {
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keywordsToProcess.length) }, () => worker()));
 
-  // Record Google Places API usage for this run (admin GCP cost estimate)
+  // Record Outscraper usage for this run (admin vendor-cost estimate)
   if (apiCalls.pro > 0 || apiCalls.enterprise > 0) {
     await pool.query(
       'INSERT INTO api_usage (user_id, run_id, pro_calls, enterprise_calls) VALUES ($1, $2, $3, $4)',

@@ -147,8 +147,9 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  // Google Places API call tracking — one row per generation run, used to
-  // estimate GCP cost on the admin dashboard (calls × SKU price).
+  // Outscraper usage tracking — one row per generation run, used to estimate
+  // vendor cost on the admin dashboard. enterprise_calls = records returned
+  // (cost driver, ~$3/1000); pro_calls is unused (kept for compatibility).
   await pool.query(`
     CREATE TABLE IF NOT EXISTS api_usage (
       id SERIAL PRIMARY KEY,

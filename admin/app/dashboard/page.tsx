@@ -112,7 +112,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Overview</h1>
-          <p className="text-slate-400 text-sm mt-1">Business, usage & estimated Google Cloud cost</p>
+          <p className="text-slate-400 text-sm mt-1">Business, usage & estimated Outscraper cost</p>
         </div>
         <button onClick={load} disabled={loading}
           className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:bg-white/[0.08] disabled:opacity-50 transition">
@@ -124,13 +124,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card icon={IndianRupee} color="orange" label="Total Revenue" value={inr(o.revenue.total)} />
         <Card icon={TrendingUp} color="purple" label="Revenue This Month" value={inr(o.revenue.this_month)} />
-        <Card icon={Cloud} color="sky" label="GCP Cost This Month" value={inr(o.api.cost_month_inr)}
+        <Card icon={Cloud} color="sky" label="Outscraper Cost This Month" value={inr(o.api.cost_month_inr)}
           sub={<span className="text-slate-500">after free tier · {inr(o.api.cost_total_inr)} all-time (list)</span>} />
         <Card icon={Wallet} color={profitPositive ? 'green' : 'rose'} label="Profit This Month"
           value={inr(o.profit.this_month)}
           sub={<span className={profitPositive ? 'text-emerald-400' : 'text-rose-400'}>
             {profitPositive ? <ArrowUpRight className="w-3 h-3 inline" /> : <ArrowDownRight className="w-3 h-3 inline" />}
-            {' '}revenue − GCP cost
+            {' '}revenue − Outscraper cost
           </span>} />
       </div>
 
@@ -146,26 +146,26 @@ export default function DashboardPage() {
           sub={<span className="text-slate-500">{num(o.leads.this_month)} this month</span>} />
       </div>
 
-      {/* ── GCP cost detail + free tier ── */}
+      {/* ── Outscraper cost detail + free tier ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5 lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Server className="w-4 h-4 text-sky-400" />
-            <h2 className="text-sm font-semibold text-white">Google Cloud — Places API usage</h2>
+            <h2 className="text-sm font-semibold text-white">Outscraper — Google Maps API usage</h2>
             <span className="ml-auto text-xs text-slate-500">@ ₹{o.pricing.usd_inr}/USD</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
-              <p className="text-xl font-bold text-white">{num(o.api.calls_month)}</p>
-              <p className="text-xs text-slate-400">API calls this month</p>
-            </div>
-            <div>
               <p className="text-xl font-bold text-white">{num(o.api.ent_month)}</p>
-              <p className="text-xs text-slate-400">Enterprise (lead search)</p>
+              <p className="text-xs text-slate-400">Records this month</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-white">{num(o.api.pro_month)}</p>
-              <p className="text-xs text-slate-400">Pro (location lookup)</p>
+              <p className="text-xl font-bold text-white">{num(o.pricing.free_ent)}</p>
+              <p className="text-xs text-slate-400">Free records / month</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-white">{num(Math.max(0, o.api.ent_month - o.pricing.free_ent))}</p>
+              <p className="text-xs text-slate-400">Billable records</p>
             </div>
             <div>
               <p className="text-xl font-bold text-sky-400">{inr(o.api.cost_month_inr)}</p>
@@ -173,19 +173,18 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="space-y-3">
-            <FreeTierBar used={o.api.ent_month} free={o.pricing.free_ent} label="Enterprise free tier (this month)" color="bg-sky-500" />
-            <FreeTierBar used={o.api.pro_month} free={o.pricing.free_pro} label="Pro free tier (this month)" color="bg-indigo-500" />
+            <FreeTierBar used={o.api.ent_month} free={o.pricing.free_ent} label="Free records (this month)" color="bg-sky-500" />
           </div>
           <p className="text-xs text-slate-500 mt-4">
-            Estimated from call counts × Google list price (Enterprise ${o.pricing.price_ent_usd}/call, Pro ${o.pricing.price_pro_usd}/call).
-            First {num(o.pricing.free_ent)} Enterprise + {num(o.pricing.free_pro)} Pro calls each month are free.
+            Estimated from records returned × Outscraper list price (${o.pricing.price_ent_usd}/record, ~$3/1000).
+            First {num(o.pricing.free_ent)} records each month are free.
           </p>
         </div>
 
         <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-1">All-time API calls</h2>
-          <p className="text-3xl font-bold text-white">{num(o.api.calls_total)}</p>
-          <p className="text-xs text-slate-400 mb-4">{num(o.api.ent_total)} Enterprise · {num(o.api.pro_total)} Pro</p>
+          <h2 className="text-sm font-semibold text-white mb-1">All-time records</h2>
+          <p className="text-3xl font-bold text-white">{num(o.api.ent_total)}</p>
+          <p className="text-xs text-slate-400 mb-4">Google Maps businesses pulled via Outscraper</p>
           <div className="pt-4 border-t border-white/[0.06]">
             <p className="text-xs text-slate-400">List-price cost, all-time</p>
             <p className="text-2xl font-bold text-sky-400">{inr(o.api.cost_total_inr)}</p>
@@ -207,7 +206,7 @@ export default function DashboardPage() {
           <BarChart values={trendLeads} color="bg-teal-500" format={num} />
         </div>
         <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
-          <p className="text-xs text-slate-400 mb-1">GCP cost (list) · last 30 days</p>
+          <p className="text-xs text-slate-400 mb-1">Outscraper cost (list) · last 30 days</p>
           <p className="text-lg font-bold text-white mb-3">{inr(trendCost.reduce((a, b) => a + b, 0))}</p>
           <BarChart values={trendCost} color="bg-sky-500" format={inr} />
         </div>
@@ -227,8 +226,8 @@ export default function DashboardPage() {
                 <th className="text-left px-5 py-2.5 font-medium">User</th>
                 <th className="text-right px-5 py-2.5 font-medium">Tokens used</th>
                 <th className="text-right px-5 py-2.5 font-medium">Leads</th>
-                <th className="text-right px-5 py-2.5 font-medium">API calls</th>
-                <th className="text-right px-5 py-2.5 font-medium">GCP cost</th>
+                <th className="text-right px-5 py-2.5 font-medium">Records</th>
+                <th className="text-right px-5 py-2.5 font-medium">Outscraper cost</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
