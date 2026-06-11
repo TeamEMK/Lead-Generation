@@ -39,12 +39,17 @@ export interface Overview {
     cost_total_inr: number; cost_month_inr: number
   }
   profit: { this_month: number }
+  economics: {
+    we_spent_total: number; we_spent_month: number
+    users_paid_total: number; users_paid_month: number
+    profit_total: number; profit_month: number; margin_pct: number
+  }
   pricing: {
     usd_inr: number; price_pro_usd: number; price_ent_usd: number
     free_pro: number; free_ent: number
   }
   trend: { date: string; revenue: number; leads: number; calls: number; cost_inr: number }[]
-  top_users: { name: string; email: string; tokens_used: number; leads: number; calls: number; cost_inr: number }[]
+  top_users: { name: string; email: string; tokens_used: number; leads: number; calls: number; cost_inr: number; revenue: number; profit: number }[]
 }
 
 export async function fetchOverview(): Promise<Overview> {
@@ -70,12 +75,35 @@ export interface AdminSubscription {
   id: number; invoice_number: string | null; tokens_purchased: number
   amount_paid_inr: number; status: string; created_at: string; expires_at: string | null
   plan_name: string; price_inr: number; user_name: string; user_email: string
+  razorpay_payment_id: string | null; razorpay_order_id: string | null
 }
 
 export async function fetchSubscriptions(): Promise<AdminSubscription[]> {
   const res = await fetch(`${API_URL}/api/admin/subscriptions`, { headers: headers(), cache: 'no-store' })
   if (!res.ok) throw new Error('Unauthorized')
   return (await res.json()).subscriptions
+}
+
+export interface RazorpayPayment {
+  id: string; order_id: string | null; amount_inr: number; currency: string
+  status: string; method: string; email: string; contact: string; created_at: string
+}
+
+export async function fetchRazorpayPayments(): Promise<{ configured: boolean; payments: RazorpayPayment[]; error?: string }> {
+  const res = await fetch(`${API_URL}/api/admin/razorpay/payments`, { headers: headers(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Unauthorized')
+  return res.json()
+}
+
+export interface TokenActivity {
+  id: number; keyword: string; leads: number; tokens_used: number
+  status: string; created_at: string; user_name: string; user_email: string
+}
+
+export async function fetchTokenActivity(): Promise<TokenActivity[]> {
+  const res = await fetch(`${API_URL}/api/admin/token-activity`, { headers: headers(), cache: 'no-store' })
+  if (!res.ok) throw new Error('Unauthorized')
+  return (await res.json()).activity
 }
 
 export interface AdminTransaction {

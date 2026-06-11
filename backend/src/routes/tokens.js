@@ -205,9 +205,9 @@ router.post('/purchase', async (req, res) => {
     const totalAmountPaid = amountWithGst + gatewayFee;
 
     await client.query(
-      `INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [req.user.id, plan.id, plan.tokens, totalAmountPaid, invoiceNumber, expiresAt]
+      `INSERT INTO subscriptions (user_id, plan_id, tokens_purchased, amount_paid_inr, invoice_number, expires_at, razorpay_payment_id, razorpay_order_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [req.user.id, plan.id, plan.tokens, totalAmountPaid, invoiceNumber, expiresAt, razorpay_payment_id, razorpay_order_id]
     );
     await client.query(
       'INSERT INTO token_transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',

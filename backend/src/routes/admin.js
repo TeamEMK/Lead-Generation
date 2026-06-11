@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const Razorpay = require('razorpay');
+
+function getRazorpay() {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) return null;
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization;
@@ -61,6 +70,7 @@ router.get('/subscriptions', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT s.id, s.invoice_number, s.tokens_purchased, s.amount_paid_inr,
              s.status, s.created_at, s.expires_at,
+             s.razorpay_payment_id, s.razorpay_order_id,
              p.name AS plan_name, p.price_inr,
              u.name AS user_name, u.email AS user_email
       FROM subscriptions s
@@ -71,6 +81,30 @@ router.get('/subscriptions', async (req, res) => {
     res.json({ subscriptions: rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Live Razorpay payments — pulled straight from the gateway for reconciliation
+router.get('/razorpay/payments', async (req, res) => {
+  const rzp = getRazorpay();
+  if (!rzp) return res.json({ configured: false, payments: [] });
+  try {
+    const count = Math.min(parseInt(req.query.count, 10) || 50, 100);
+    const resp = await rzp.payments.all({ count });
+    const payments = (resp.items || []).map(p => ({
+      id: p.id,
+      order_id: p.order_id || null,
+      amount_inr: (p.amount || 0) / 100,
+      currency: p.currency,
+      status: p.status,                       // captured | authorized | failed | refunded
+      method: p.method || '',
+      email: p.email || '',
+      contact: p.contact || '',
+      created_at: new Date((p.created_at || 0) * 1000).toISOString(),
+    }));
+    res.json({ configured: true, payments });
+  } catch (err) {
+    res.status(502).json({ configured: true, error: err.message, payments: [] });
   }
 });
 
@@ -86,6 +120,33 @@ router.get('/transactions', async (req, res) => {
       LIMIT 1000
     `);
     res.json({ transactions: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Token activity — every generation run with the keyword the user searched
+router.get('/token-activity', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT gr.id, gr.keywords, gr.total_found, gr.tokens_charged, gr.status, gr.created_at,
+             u.name AS user_name, u.email AS user_email
+      FROM generation_runs gr
+      JOIN users u ON u.id = gr.user_id
+      ORDER BY gr.created_at DESC
+      LIMIT 1000
+    `);
+    const activity = rows.map(r => ({
+      id: r.id,
+      keyword: Array.isArray(r.keywords) ? (r.keywords[0] || '') : (r.keywords || ''),
+      leads: r.total_found,
+      tokens_used: r.tokens_charged,
+      status: r.status,
+      created_at: r.created_at,
+      user_name: r.user_name,
+      user_email: r.user_email,
+    }));
+    res.json({ activity });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -157,7 +218,8 @@ router.get('/overview', async (req, res) => {
                     COALESCE((SELECT -SUM(amount) FROM token_transactions t WHERE t.user_id = u.id AND t.type = 'usage'), 0) tokens_used,
                     COALESCE((SELECT COUNT(*) FROM user_leads ul WHERE ul.user_id = u.id), 0) leads,
                     COALESCE((SELECT SUM(pro_calls) FROM api_usage a WHERE a.user_id = u.id), 0) pro_calls,
-                    COALESCE((SELECT SUM(enterprise_calls) FROM api_usage a WHERE a.user_id = u.id), 0) ent_calls
+                    COALESCE((SELECT SUM(enterprise_calls) FROM api_usage a WHERE a.user_id = u.id), 0) ent_calls,
+                    COALESCE((SELECT SUM(amount_paid_inr) FROM subscriptions s WHERE s.user_id = u.id), 0) revenue
                   FROM users u ORDER BY tokens_used DESC LIMIT 8`),
     ]);
 
@@ -191,13 +253,30 @@ router.get('/overview', async (req, res) => {
       });
     }
 
-    const top_users = topUsers.rows.map(r => ({
-      name: r.name, email: r.email,
-      tokens_used: N(r.tokens_used),
-      leads: N(r.leads),
-      calls: N(r.pro_calls) + N(r.ent_calls),
-      cost_inr: Math.round(costInr(N(r.pro_calls), N(r.ent_calls)) * 100) / 100,
-    }));
+    const top_users = topUsers.rows.map(r => {
+      const our_cost = Math.round(costInr(N(r.pro_calls), N(r.ent_calls)) * 100) / 100;  // what WE paid Outscraper
+      const revenue = N(r.revenue);                                                       // what the USER paid us
+      return {
+        name: r.name, email: r.email,
+        tokens_used: N(r.tokens_used),
+        leads: N(r.leads),
+        calls: N(r.pro_calls) + N(r.ent_calls),
+        cost_inr: our_cost,
+        revenue,
+        profit: Math.round((revenue - our_cost) * 100) / 100,
+      };
+    });
+
+    const revenueTotal = parseFloat(s.revenue_total) || 0;
+    const economics = {
+      we_spent_total: Math.round(costTotal * 100) / 100,        // Outscraper, all-time (list price)
+      we_spent_month: Math.round(costMonth * 100) / 100,        // Outscraper this month, after free tier
+      users_paid_total: revenueTotal,                            // revenue all-time
+      users_paid_month: revenueMonth,                            // revenue this month
+      profit_total: Math.round((revenueTotal - costTotal) * 100) / 100,
+      profit_month: Math.round((revenueMonth - costMonth) * 100) / 100,
+      margin_pct: revenueTotal > 0 ? Math.round(((revenueTotal - costTotal) / revenueTotal) * 1000) / 10 : 0,
+    };
 
     res.json({
       users: { total: N(u.total), new_30d: N(u.new_30d), with_plan: N(u.with_plan) },
@@ -216,6 +295,7 @@ router.get('/overview', async (req, res) => {
         cost_month_inr: Math.round(costMonth * 100) / 100,
       },
       profit: { this_month: Math.round((revenueMonth - costMonth) * 100) / 100 },
+      economics,
       pricing: {
         usd_inr: USD_INR, price_pro_usd: PRICE_PRO_USD, price_ent_usd: PRICE_ENT_USD,
         free_pro: FREE_PRO, free_ent: FREE_ENT,

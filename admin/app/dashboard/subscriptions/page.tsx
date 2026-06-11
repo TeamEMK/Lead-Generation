@@ -75,7 +75,7 @@ export default function SubscriptionsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  {['Invoice #', 'User', 'Plan', 'Tokens', 'Amount (incl. GST)', 'Status', 'Created', 'Expires'].map(h => (
+                  {['Invoice #', 'User', 'Plan', 'Tokens', 'Amount (incl. GST)', 'Razorpay Payment', 'Status', 'Created', 'Expires'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -93,6 +93,7 @@ export default function SubscriptionsPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-300 font-mono">{s.tokens_purchased.toLocaleString()}</td>
                     <td className="px-4 py-3 font-semibold text-white whitespace-nowrap">{fmtAmt(s.amount_paid_inr)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-400 whitespace-nowrap">{s.razorpay_payment_id || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs border font-medium capitalize ${STATUS_STYLES[s.status] || STATUS_STYLES.expired}`}>
                         {s.status}
@@ -103,7 +104,7 @@ export default function SubscriptionsPage() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-12 text-slate-600">No subscriptions found</td></tr>
+                  <tr><td colSpan={9} className="text-center py-12 text-slate-600">No subscriptions found</td></tr>
                 )}
               </tbody>
             </table>

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, CreditCard, ArrowLeftRight, FileText, LogOut,
+  LayoutDashboard, Users, CreditCard, ArrowLeftRight, FileText, LogOut, Activity,
 } from 'lucide-react'
 
 const NAV = [
@@ -11,6 +11,7 @@ const NAV = [
   { href: '/dashboard/users', label: 'Users', icon: Users },
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/dashboard/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { href: '/dashboard/token-activity', label: 'Token Activity', icon: Activity },
   { href: '/dashboard/invoices', label: 'Invoices', icon: FileText },
 ]
 

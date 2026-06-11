@@ -133,6 +133,9 @@ async function initDb() {
   `);
   await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS invoice_number TEXT`);
   await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
+  // Razorpay reconciliation — store the real payment/order ids per purchase
+  await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT`);
+  await pool.query(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT`);
   // Safety constraints
   await pool.query(`ALTER TABLE users ADD CONSTRAINT IF NOT EXISTS tokens_balance_non_negative CHECK (tokens_balance >= 0)`).catch(() => {});
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_invoice_number_unique ON subscriptions (invoice_number) WHERE invoice_number IS NOT NULL`);

@@ -134,6 +134,33 @@ export default function DashboardPage() {
           </span>} />
       </div>
 
+      {/* ── Cost economics: what we spent vs what users paid ── */}
+      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+        <h2 className="text-sm font-semibold text-white mb-4">Cost economics — all-time</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div>
+            <p className="text-xs text-slate-400 mb-1">We spent · Outscraper</p>
+            <p className="text-2xl font-bold text-sky-400">{inr(o.economics.we_spent_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Users paid · Revenue</p>
+            <p className="text-2xl font-bold text-emerald-400">{inr(o.economics.users_paid_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Profit</p>
+            <p className={`text-2xl font-bold ${o.economics.profit_total >= 0 ? 'text-white' : 'text-rose-400'}`}>{inr(o.economics.profit_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Margin</p>
+            <p className="text-2xl font-bold text-white">{o.economics.margin_pct}%</p>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">
+          Users paid = real money received · We spent = Outscraper list cost · Profit = users paid − we spent.
+          This month: spent {inr(o.economics.we_spent_month)} · paid {inr(o.economics.users_paid_month)} · profit {inr(o.economics.profit_month)}.
+        </p>
+      </div>
+
       {/* ── Usage row ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card icon={Users} color="blue" label="Total Users" value={num(o.users.total)}
@@ -227,7 +254,9 @@ export default function DashboardPage() {
                 <th className="text-right px-5 py-2.5 font-medium">Tokens used</th>
                 <th className="text-right px-5 py-2.5 font-medium">Leads</th>
                 <th className="text-right px-5 py-2.5 font-medium">Records</th>
-                <th className="text-right px-5 py-2.5 font-medium">Outscraper cost</th>
+                <th className="text-right px-5 py-2.5 font-medium">We spent</th>
+                <th className="text-right px-5 py-2.5 font-medium">User paid</th>
+                <th className="text-right px-5 py-2.5 font-medium">Profit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -241,6 +270,8 @@ export default function DashboardPage() {
                   <td className="px-5 py-3 text-right text-slate-300">{num(u.leads)}</td>
                   <td className="px-5 py-3 text-right text-slate-300">{num(u.calls)}</td>
                   <td className="px-5 py-3 text-right text-sky-400">{inr(u.cost_inr)}</td>
+                  <td className="px-5 py-3 text-right text-emerald-400">{inr(u.revenue)}</td>
+                  <td className={`px-5 py-3 text-right font-medium ${u.profit >= 0 ? 'text-white' : 'text-rose-400'}`}>{inr(u.profit)}</td>
                 </tr>
               ))}
             </tbody>
