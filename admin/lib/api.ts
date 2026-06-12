@@ -50,7 +50,7 @@ export interface Overview {
     remaining_usd: number; records_total: number; billable_records_total: number
   }
   pricing: {
-    usd_inr: number; price_pro_usd: number; price_ent_usd: number
+    usd_inr: number; price_pro_usd: number; price_ent_usd: number; price_ent_inr: number
     free_pro: number; free_ent: number
   }
   trend: { date: string; revenue: number; leads: number; calls: number; cost_inr: number }[]

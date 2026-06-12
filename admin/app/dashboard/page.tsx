@@ -139,7 +139,7 @@ export default function DashboardPage() {
         <Card icon={IndianRupee} color="orange" label="Total Revenue" value={inr(o.revenue.total)} />
         <Card icon={TrendingUp} color="purple" label="Revenue This Month" value={inr(o.revenue.this_month)} />
         <Card icon={Cloud} color="sky" label="Outscraper Cost This Month" value={inr(o.api.cost_month_inr)}
-          sub={<span className="text-slate-500">after free tier · {inr(o.api.cost_total_inr)} all-time (list)</span>} />
+          sub={<span className="text-slate-500">after free tier · {inr(o.outscraper.spent_inr)} all-time</span>} />
         <Card icon={Wallet} color={profitPositive ? 'green' : 'rose'} label="Profit This Month"
           value={inr(o.profit.this_month)}
           sub={<span className={profitPositive ? 'text-emerald-400' : 'text-rose-400'}>
@@ -170,7 +170,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Users paid = real money received · We spent = Outscraper list cost · Profit = users paid − we spent.
+          Users paid = real money received · We spent = Outscraper cost after free tier · Profit = users paid − we spent.
           This month: spent {inr(o.economics.we_spent_month)} · paid {inr(o.economics.users_paid_month)} · profit {inr(o.economics.profit_month)}.
         </p>
       </div>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-4">
             <Server className="w-4 h-4 text-sky-400" />
             <h2 className="text-sm font-semibold text-white">Outscraper — Google Maps API usage</h2>
-            <span className="ml-auto text-xs text-slate-500">@ ₹{o.pricing.usd_inr}/USD</span>
+            <span className="ml-auto text-xs text-slate-500">₹{o.pricing.price_ent_inr}/record · ${o.pricing.price_ent_usd}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
             <FreeTierBar used={o.api.ent_month} free={o.pricing.free_ent} label="Free records (this month)" color="bg-sky-500" />
           </div>
           <p className="text-xs text-slate-500 mt-4">
-            Estimated from records returned × Outscraper list price (${o.pricing.price_ent_usd}/record, ~$3/1000).
+            Billable cost = records beyond the free tier × ₹{o.pricing.price_ent_inr}/record (${o.pricing.price_ent_usd}).
             First {num(o.pricing.free_ent)} records each month are free.
           </p>
         </div>
@@ -227,9 +227,9 @@ export default function DashboardPage() {
           <p className="text-3xl font-bold text-white">{num(o.api.ent_total)}</p>
           <p className="text-xs text-slate-400 mb-4">Google Maps businesses pulled via Outscraper</p>
           <div className="pt-4 border-t border-white/[0.06]">
-            <p className="text-xs text-slate-400">List-price cost, all-time</p>
-            <p className="text-2xl font-bold text-sky-400">{inr(o.api.cost_total_inr)}</p>
-            <p className="text-xs text-slate-500 mt-1">Before monthly free credits</p>
+            <p className="text-xs text-slate-400">Cost all-time (after free tier)</p>
+            <p className="text-2xl font-bold text-sky-400">{inr(o.outscraper.spent_inr)}</p>
+            <p className="text-xs text-slate-500 mt-1">{num(o.outscraper.billable_records_total)} billable records</p>
           </div>
         </div>
       </div>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
           </button>
         </form>
         <p className="text-xs text-slate-500 mt-2">
-          Spent = billable records (after the free {num(o.pricing.free_ent)}/month) × ${o.pricing.price_ent_usd}/record (₹{(o.pricing.price_ent_usd * o.pricing.usd_inr).toFixed(3)}). Log each Outscraper top-up to track remaining credit.
+          Spent = billable records (after the free {num(o.pricing.free_ent)}/month) × ₹{o.pricing.price_ent_inr}/record (${o.pricing.price_ent_usd}). Log each Outscraper top-up to track remaining credit.
         </p>
       </div>
 

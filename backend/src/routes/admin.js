@@ -233,10 +233,11 @@ router.get('/invoices', async (req, res) => {
 // enterprise_calls now stores the number of Outscraper records returned (the
 // only cost driver); pro_calls is unused (kept for schema/response compatibility).
 const PRICE_PRO_USD = 0;       // no separate viewport/lookup call with Outscraper
-const PRICE_ENT_USD = 0.003;   // ~$3 / 1000 returned records (basic listing)
+const PRICE_ENT_USD = 0.003;   // $0.003 per returned record (~$3 / 1000)
+const PRICE_ENT_INR = parseFloat(process.env.PRICE_ENT_INR) || 0.29;  // ₹ per record (flat, incl. forex markup)
 const FREE_PRO = 0;
 const FREE_ENT = 500;          // first 500 records per month are free
-const USD_INR = parseFloat(process.env.USD_INR_RATE) || 88;
+const USD_INR = parseFloat(process.env.USD_INR_RATE) || 88;  // only for converting recharge USD → ₹
 
 // Full owner overview — money, tokens, users, Outscraper cost estimate, 30-day trend, top users
 router.get('/overview', async (req, res) => {
@@ -282,7 +283,7 @@ router.get('/overview', async (req, res) => {
 
     const u = users.rows[0], s = subs.rows[0], a = api.rows[0], l = leads.rows[0];
     const N = v => parseInt(v, 10) || 0;
-    const costInr = (pro, ent) => (pro * PRICE_PRO_USD + ent * PRICE_ENT_USD) * USD_INR;
+    const costInr = (pro, ent) => ent * PRICE_ENT_INR;   // ₹0.29 per Outscraper record (flat, no ×USD_INR)
 
     const proTotal = N(a.pro_total), entTotal = N(a.ent_total);
     const proMonth = N(a.pro_month), entMonth = N(a.ent_month);
@@ -291,6 +292,15 @@ router.get('/overview', async (req, res) => {
     const billEntMonth = Math.max(0, entMonth - FREE_ENT);
     const costMonth = costInr(billProMonth, billEntMonth);                          // after free tier
     const revenueMonth = parseFloat(s.revenue_month) || 0;
+
+    // Actual Outscraper spend — billed per month AFTER the free 500/month tier.
+    // This (not the gross list price) is the real money that draws down the account.
+    const monthlyRecs = await pool.query(
+      `SELECT COALESCE(SUM(enterprise_calls), 0) recs FROM api_usage GROUP BY date_trunc('month', created_at)`
+    );
+    const billableRecordsTotal = monthlyRecs.rows.reduce((sum, r) => sum + Math.max(0, N(r.recs) - FREE_ENT), 0);
+    const billableCostInr = Math.round(billableRecordsTotal * PRICE_ENT_INR);   // ₹0.29/record, after free tier
+    const billableCostUsd = Math.round(billableRecordsTotal * PRICE_ENT_USD * 100) / 100;
 
     // 30-day trend, oldest → newest
     const revMap = Object.fromEntries(revByDay.rows.map(r => [r.d, parseFloat(r.v) || 0]));
@@ -311,8 +321,11 @@ router.get('/overview', async (req, res) => {
     }
 
     const top_users = topUsers.rows.map(r => {
-      const our_cost = Math.round(costInr(N(r.pro_calls), N(r.ent_calls)) * 100) / 100;  // what WE paid Outscraper
-      const revenue = N(r.revenue);                                                       // what the USER paid us
+      // Attribute the account-wide billable cost to each user in proportion to their records
+      const userRecords = N(r.ent_calls);
+      const billableShare = entTotal > 0 ? (billableRecordsTotal * userRecords / entTotal) : 0;
+      const our_cost = Math.round(billableShare * PRICE_ENT_INR * 100) / 100;  // what WE paid Outscraper (after free tier)
+      const revenue = N(r.revenue);                                            // what the USER paid us
       return {
         name: r.name, email: r.email,
         tokens_used: N(r.tokens_used),
@@ -324,35 +337,28 @@ router.get('/overview', async (req, res) => {
       };
     });
 
-    // Outscraper credit balance: manually-logged recharges vs actual spend.
-    // The recharge is only drawn down by BILLABLE records — Outscraper gives 500
-    // free per month — so bill each month separately: max(0, monthRecords - free).
+    // Outscraper credit balance: manually-logged recharges vs actual (billable) spend.
     const rechargeRes = await pool.query('SELECT COALESCE(SUM(amount_usd), 0) total_usd FROM outscraper_recharges');
     const recharged_usd = parseFloat(rechargeRes.rows[0].total_usd) || 0;
-    const monthlyRecs = await pool.query(
-      `SELECT COALESCE(SUM(enterprise_calls), 0) recs FROM api_usage GROUP BY date_trunc('month', created_at)`
-    );
-    const billableRecordsTotal = monthlyRecs.rows.reduce((sum, r) => sum + Math.max(0, N(r.recs) - FREE_ENT), 0);
-    const spent_usd = Math.round(billableRecordsTotal * PRICE_ENT_USD * 100) / 100;
     const outscraper = {
       recharged_usd,
       recharged_inr: Math.round(recharged_usd * USD_INR),
-      spent_usd,
-      spent_inr: Math.round(spent_usd * USD_INR),
-      remaining_usd: Math.round((recharged_usd - spent_usd) * 100) / 100,
+      spent_usd: billableCostUsd,
+      spent_inr: billableCostInr,
+      remaining_usd: Math.round((recharged_usd - billableCostUsd) * 100) / 100,
       records_total: entTotal,
       billable_records_total: billableRecordsTotal,
     };
 
     const revenueTotal = parseFloat(s.revenue_total) || 0;
     const economics = {
-      we_spent_total: Math.round(costTotal * 100) / 100,        // Outscraper, all-time (list price)
-      we_spent_month: Math.round(costMonth * 100) / 100,        // Outscraper this month, after free tier
+      we_spent_total: billableCostInr,                           // actual spend, after free tier
+      we_spent_month: Math.round(costMonth * 100) / 100,         // this month, after free tier
       users_paid_total: revenueTotal,                            // revenue all-time
       users_paid_month: revenueMonth,                            // revenue this month
-      profit_total: Math.round((revenueTotal - costTotal) * 100) / 100,
+      profit_total: Math.round((revenueTotal - billableCostInr) * 100) / 100,
       profit_month: Math.round((revenueMonth - costMonth) * 100) / 100,
-      margin_pct: revenueTotal > 0 ? Math.round(((revenueTotal - costTotal) / revenueTotal) * 1000) / 10 : 0,
+      margin_pct: revenueTotal > 0 ? Math.round(((revenueTotal - billableCostInr) / revenueTotal) * 1000) / 10 : 0,
     };
 
     res.json({
@@ -376,6 +382,7 @@ router.get('/overview', async (req, res) => {
       outscraper,
       pricing: {
         usd_inr: USD_INR, price_pro_usd: PRICE_PRO_USD, price_ent_usd: PRICE_ENT_USD,
+        price_ent_inr: PRICE_ENT_INR,
         free_pro: FREE_PRO, free_ent: FREE_ENT,
       },
       trend,
