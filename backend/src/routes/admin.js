@@ -324,10 +324,16 @@ router.get('/overview', async (req, res) => {
       };
     });
 
-    // Outscraper credit balance: manually-logged recharges vs estimated spend
+    // Outscraper credit balance: manually-logged recharges vs actual spend.
+    // The recharge is only drawn down by BILLABLE records — Outscraper gives 500
+    // free per month — so bill each month separately: max(0, monthRecords - free).
     const rechargeRes = await pool.query('SELECT COALESCE(SUM(amount_usd), 0) total_usd FROM outscraper_recharges');
     const recharged_usd = parseFloat(rechargeRes.rows[0].total_usd) || 0;
-    const spent_usd = Math.round(entTotal * PRICE_ENT_USD * 100) / 100;   // gross list estimate
+    const monthlyRecs = await pool.query(
+      `SELECT COALESCE(SUM(enterprise_calls), 0) recs FROM api_usage GROUP BY date_trunc('month', created_at)`
+    );
+    const billableRecordsTotal = monthlyRecs.rows.reduce((sum, r) => sum + Math.max(0, N(r.recs) - FREE_ENT), 0);
+    const spent_usd = Math.round(billableRecordsTotal * PRICE_ENT_USD * 100) / 100;
     const outscraper = {
       recharged_usd,
       recharged_inr: Math.round(recharged_usd * USD_INR),
@@ -335,6 +341,7 @@ router.get('/overview', async (req, res) => {
       spent_inr: Math.round(spent_usd * USD_INR),
       remaining_usd: Math.round((recharged_usd - spent_usd) * 100) / 100,
       records_total: entTotal,
+      billable_records_total: billableRecordsTotal,
     };
 
     const revenueTotal = parseFloat(s.revenue_total) || 0;

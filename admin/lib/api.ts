@@ -47,7 +47,7 @@ export interface Overview {
   outscraper: {
     recharged_usd: number; recharged_inr: number
     spent_usd: number; spent_inr: number
-    remaining_usd: number; records_total: number
+    remaining_usd: number; records_total: number; billable_records_total: number
   }
   pricing: {
     usd_inr: number; price_pro_usd: number; price_ent_usd: number

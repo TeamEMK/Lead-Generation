@@ -249,7 +249,7 @@ export default function DashboardPage() {
           <div>
             <p className="text-xs text-slate-400 mb-1">Spent (est.)</p>
             <p className="text-2xl font-bold text-sky-400">${o.outscraper.spent_usd.toLocaleString('en-US')}</p>
-            <p className="text-xs text-slate-500">{num(o.outscraper.records_total)} records</p>
+            <p className="text-xs text-slate-500">{num(o.outscraper.billable_records_total)} billable · {inr(o.outscraper.spent_inr)}</p>
           </div>
           <div>
             <p className="text-xs text-slate-400 mb-1">Remaining (est.)</p>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
           </button>
         </form>
         <p className="text-xs text-slate-500 mt-2">
-          Spent is estimated from records × ${o.pricing.price_ent_usd}/record. Log each Outscraper top-up to track remaining credit.
+          Spent = billable records (after the free {num(o.pricing.free_ent)}/month) × ${o.pricing.price_ent_usd}/record (₹{(o.pricing.price_ent_usd * o.pricing.usd_inr).toFixed(3)}). Log each Outscraper top-up to track remaining credit.
         </p>
       </div>
 
