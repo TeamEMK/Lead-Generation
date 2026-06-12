@@ -105,6 +105,13 @@ async function initDb() {
       UNIQUE(user_id, lead_id)
     )
   `);
+  // Keep a user's leads after they delete their account: snapshot the owner and
+  // null-out the FK (ON DELETE SET NULL) instead of cascade-deleting the rows.
+  await pool.query(`ALTER TABLE user_leads ADD COLUMN IF NOT EXISTS owner_email TEXT`);
+  await pool.query(`ALTER TABLE user_leads ADD COLUMN IF NOT EXISTS owner_name TEXT`);
+  await pool.query(`ALTER TABLE user_leads ALTER COLUMN user_id DROP NOT NULL`).catch(() => {});
+  await pool.query(`ALTER TABLE user_leads DROP CONSTRAINT IF EXISTS user_leads_user_id_fkey`).catch(() => {});
+  await pool.query(`ALTER TABLE user_leads ADD CONSTRAINT user_leads_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL`).catch(() => {});
   // Pricing plans — must exist before subscriptions and before the FK on users
   await pool.query(`
     CREATE TABLE IF NOT EXISTS plans (

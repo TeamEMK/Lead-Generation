@@ -27,7 +27,7 @@ export default function LeadsPage() {
       (l.email || '').toLowerCase().includes(q) ||
       (l.address || '').toLowerCase().includes(q) ||
       (l.keyword || '').toLowerCase().includes(q) ||
-      l.user_email.toLowerCase().includes(q)
+      (l.user_email || '').toLowerCase().includes(q)
     ))
   }, [search, leads])
 
@@ -37,7 +37,7 @@ export default function LeadsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Leads</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Leads</h1>
           <p className="text-slate-400 text-sm mt-1">
             {total.toLocaleString('en-IN')} leads in the database{total > leads.length ? ` · showing latest ${leads.length.toLocaleString('en-IN')}` : ''}
           </p>
@@ -47,14 +47,14 @@ export default function LeadsPage() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search business / phone / keyword…"
-            className="pl-9 pr-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-72"
+            className="pl-9 pr-4 py-2 rounded-xl bg-[var(--hover)] border border-[var(--border)] text-sm text-[var(--text)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-72"
           />
         </div>
       </div>
 
       {error && <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">{error}</div>}
 
-      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
@@ -63,16 +63,16 @@ export default function LeadsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-[var(--border)]">
                   {['Business', 'Phone', 'Website', 'Email', 'Address', 'Keyword', 'User', 'Date'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-[var(--border)]">
                 {filtered.map(l => (
-                  <tr key={l.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3 font-medium text-white whitespace-nowrap max-w-[220px] truncate">{l.business_name || '—'}</td>
+                  <tr key={l.id} className="hover:bg-[var(--hover)] transition-colors">
+                    <td className="px-4 py-3 font-medium text-[var(--text)] whitespace-nowrap max-w-[220px] truncate">{l.business_name || '—'}</td>
                     <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{l.phone || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 max-w-[160px] truncate">
                       {l.website ? (
@@ -87,8 +87,11 @@ export default function LeadsPage() {
                       <span className="px-2 py-0.5 rounded-lg bg-brand-500/10 text-brand-300 text-xs border border-brand-500/20">{l.keyword || '—'}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <p className="text-white text-xs font-medium">{l.user_name}</p>
-                      <p className="text-xs text-slate-500">{l.user_email}</p>
+                      <p className="text-[var(--text)] text-xs font-medium flex items-center gap-1.5">
+                        {l.user_name || 'Unknown'}
+                        {l.owner_deleted && <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[10px] border border-rose-500/20">deleted</span>}
+                      </p>
+                      <p className="text-xs text-slate-500">{l.user_email || '—'}</p>
                     </td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">{fmt(l.assigned_at)}</td>
                   </tr>

@@ -114,7 +114,7 @@ export async function fetchTokenActivity(): Promise<TokenActivity[]> {
 export interface AdminLead {
   id: number; keyword: string; assigned_at: string
   business_name: string; phone: string; website: string; email: string; address: string
-  user_name: string; user_email: string
+  user_name: string | null; user_email: string | null; owner_deleted: boolean
 }
 
 export async function fetchLeads(): Promise<{ leads: AdminLead[]; total: number }> {

@@ -25,11 +25,11 @@ function Card({ icon: Icon, color, label, value, sub }: {
   icon: any; color: string; label: string; value: string; sub?: ReactNode
 }) {
   return (
-    <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
       <div className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border mb-3 ${colorMap[color]}`}>
         <Icon className="w-4 h-4" />
       </div>
-      <p className="text-2xl font-bold text-white leading-tight">{value}</p>
+      <p className="text-2xl font-bold text-[var(--text)] leading-tight">{value}</p>
       <p className="text-xs text-slate-400 mt-0.5">{label}</p>
       {sub && <p className="text-xs mt-1.5">{sub}</p>}
     </div>
@@ -66,7 +66,7 @@ function FreeTierBar({ used, free, label, color }: { used: number; free: number;
           {num(used)} / {num(free)}{over ? ` (+${num(used - free)})` : ''}
         </span>
       </div>
-      <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-2 rounded-full bg-[var(--hover)] overflow-hidden">
         <div className={`h-full rounded-full ${over ? 'bg-rose-500' : color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -110,7 +110,7 @@ export default function DashboardPage() {
     return (
       <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-28 rounded-2xl bg-white/[0.03] border border-white/[0.06] animate-pulse" />
+          <div key={i} className="h-28 rounded-2xl bg-[var(--hover)] border border-[var(--border)] animate-pulse" />
         ))}
       </div>
     )
@@ -125,11 +125,11 @@ export default function DashboardPage() {
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Overview</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Overview</h1>
           <p className="text-slate-400 text-sm mt-1">Business, usage & estimated Outscraper cost</p>
         </div>
         <button onClick={load} disabled={loading}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:bg-white/[0.08] disabled:opacity-50 transition">
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl bg-[var(--hover)] border border-[var(--border)] text-slate-300 hover:bg-[var(--hover)] disabled:opacity-50 transition">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
@@ -148,33 +148,6 @@ export default function DashboardPage() {
           </span>} />
       </div>
 
-      {/* ── Cost economics: what we spent vs what users paid ── */}
-      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
-        <h2 className="text-sm font-semibold text-white mb-4">Cost economics — all-time</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs text-slate-400 mb-1">We spent · Outscraper</p>
-            <p className="text-2xl font-bold text-sky-400">{inr(o.economics.we_spent_total)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 mb-1">Users paid · Revenue</p>
-            <p className="text-2xl font-bold text-emerald-400">{inr(o.economics.users_paid_total)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 mb-1">Profit</p>
-            <p className={`text-2xl font-bold ${o.economics.profit_total >= 0 ? 'text-white' : 'text-rose-400'}`}>{inr(o.economics.profit_total)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 mb-1">Margin</p>
-            <p className="text-2xl font-bold text-white">{o.economics.margin_pct}%</p>
-          </div>
-        </div>
-        <p className="text-xs text-slate-500 mt-3">
-          Users paid = real money received · We spent = Outscraper cost after free tier · Profit = users paid − we spent.
-          This month: spent {inr(o.economics.we_spent_month)} · paid {inr(o.economics.users_paid_month)} · profit {inr(o.economics.profit_month)}.
-        </p>
-      </div>
-
       {/* ── Usage row ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card icon={Users} color="blue" label="Total Users" value={num(o.users.total)}
@@ -187,25 +160,52 @@ export default function DashboardPage() {
           sub={<span className="text-slate-500">{num(o.leads.this_month)} this month</span>} />
       </div>
 
+      {/* ── Cost economics: what we spent vs what users paid ── */}
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
+        <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Cost economics — all-time</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div>
+            <p className="text-xs text-slate-400 mb-1">We spent · Outscraper</p>
+            <p className="text-2xl font-bold text-sky-400">{inr(o.economics.we_spent_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Users paid · Revenue</p>
+            <p className="text-2xl font-bold text-emerald-400">{inr(o.economics.users_paid_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Profit</p>
+            <p className={`text-2xl font-bold ${o.economics.profit_total >= 0 ? 'text-[var(--text)]' : 'text-rose-400'}`}>{inr(o.economics.profit_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Margin</p>
+            <p className="text-2xl font-bold text-[var(--text)]">{o.economics.margin_pct}%</p>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">
+          Users paid = real money received · We spent = Outscraper cost after free tier · Profit = users paid − we spent.
+          This month: spent {inr(o.economics.we_spent_month)} · paid {inr(o.economics.users_paid_month)} · profit {inr(o.economics.profit_month)}.
+        </p>
+      </div>
+
       {/* ── Outscraper cost detail + free tier ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5 lg:col-span-2">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Server className="w-4 h-4 text-sky-400" />
-            <h2 className="text-sm font-semibold text-white">Outscraper — Google Maps API usage</h2>
+            <h2 className="text-sm font-semibold text-[var(--text)]">Outscraper — Google Maps API usage</h2>
             <span className="ml-auto text-xs text-slate-500">₹{o.pricing.price_ent_inr}/record · ${o.pricing.price_ent_usd}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
-              <p className="text-xl font-bold text-white">{num(o.api.ent_month)}</p>
+              <p className="text-xl font-bold text-[var(--text)]">{num(o.api.ent_month)}</p>
               <p className="text-xs text-slate-400">Records this month</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-white">{num(o.pricing.free_ent)}</p>
+              <p className="text-xl font-bold text-[var(--text)]">{num(o.pricing.free_ent)}</p>
               <p className="text-xs text-slate-400">Free records / month</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-white">{num(Math.max(0, o.api.ent_month - o.pricing.free_ent))}</p>
+              <p className="text-xl font-bold text-[var(--text)]">{num(Math.max(0, o.api.ent_month - o.pricing.free_ent))}</p>
               <p className="text-xs text-slate-400">Billable records</p>
             </div>
             <div>
@@ -222,11 +222,11 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-1">All-time records</h2>
-          <p className="text-3xl font-bold text-white">{num(o.api.ent_total)}</p>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-1">All-time records</h2>
+          <p className="text-3xl font-bold text-[var(--text)]">{num(o.api.ent_total)}</p>
           <p className="text-xs text-slate-400 mb-4">Google Maps businesses pulled via Outscraper</p>
-          <div className="pt-4 border-t border-white/[0.06]">
+          <div className="pt-4 border-t border-[var(--border)]">
             <p className="text-xs text-slate-400">Cost all-time (after free tier)</p>
             <p className="text-2xl font-bold text-sky-400">{inr(o.outscraper.spent_inr)}</p>
             <p className="text-xs text-slate-500 mt-1">{num(o.outscraper.billable_records_total)} billable records</p>
@@ -235,10 +235,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Outscraper credit balance (manual recharges) ── */}
-      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <Wallet className="w-4 h-4 text-emerald-400" />
-          <h2 className="text-sm font-semibold text-white">Outscraper credit balance</h2>
+          <h2 className="text-sm font-semibold text-[var(--text)]">Outscraper credit balance</h2>
         </div>
         <div className="grid grid-cols-3 gap-4 mb-5">
           <div>
@@ -253,16 +253,16 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-xs text-slate-400 mb-1">Remaining (est.)</p>
-            <p className={`text-2xl font-bold ${o.outscraper.remaining_usd >= 0 ? 'text-white' : 'text-rose-400'}`}>${o.outscraper.remaining_usd.toLocaleString('en-US')}</p>
+            <p className={`text-2xl font-bold ${o.outscraper.remaining_usd >= 0 ? 'text-[var(--text)]' : 'text-rose-400'}`}>${o.outscraper.remaining_usd.toLocaleString('en-US')}</p>
           </div>
         </div>
         <form onSubmit={submitRecharge} className="flex flex-wrap items-center gap-2">
           <input value={amt} onChange={e => setAmt(e.target.value)} type="number" step="0.01" min="0" placeholder="Amount (USD)"
-            className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-36" />
+            className="px-3 py-2 rounded-xl bg-[var(--hover)] border border-[var(--border)] text-sm text-[var(--text)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-36" />
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)"
-            className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 flex-1 min-w-[140px]" />
+            className="px-3 py-2 rounded-xl bg-[var(--hover)] border border-[var(--border)] text-sm text-[var(--text)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 flex-1 min-w-[140px]" />
           <button type="submit" disabled={saving}
-            className="px-4 py-2 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition whitespace-nowrap">
+            className="px-4 py-2 text-sm font-medium rounded-xl bg-brand-500 text-[var(--text)] hover:bg-brand-600 disabled:opacity-50 transition whitespace-nowrap">
             {saving ? 'Adding…' : '+ Add recharge'}
           </button>
         </form>
@@ -273,34 +273,34 @@ export default function DashboardPage() {
 
       {/* ── Trends ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
           <p className="text-xs text-slate-400 mb-1">Revenue · last 30 days</p>
-          <p className="text-lg font-bold text-white mb-3">{inr(trendRev.reduce((a, b) => a + b, 0))}</p>
+          <p className="text-lg font-bold text-[var(--text)] mb-3">{inr(trendRev.reduce((a, b) => a + b, 0))}</p>
           <BarChart values={trendRev} color="bg-brand-500" format={inr} />
         </div>
-        <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
           <p className="text-xs text-slate-400 mb-1">Leads · last 30 days</p>
-          <p className="text-lg font-bold text-white mb-3">{num(trendLeads.reduce((a, b) => a + b, 0))}</p>
+          <p className="text-lg font-bold text-[var(--text)] mb-3">{num(trendLeads.reduce((a, b) => a + b, 0))}</p>
           <BarChart values={trendLeads} color="bg-teal-500" format={num} />
         </div>
-        <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl p-5">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
           <p className="text-xs text-slate-400 mb-1">Outscraper cost (list) · last 30 days</p>
-          <p className="text-lg font-bold text-white mb-3">{inr(trendCost.reduce((a, b) => a + b, 0))}</p>
+          <p className="text-lg font-bold text-[var(--text)] mb-3">{inr(trendCost.reduce((a, b) => a + b, 0))}</p>
           <BarChart values={trendCost} color="bg-sky-500" format={inr} />
         </div>
       </div>
 
       {/* ── Top users ── */}
-      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.06]">
-          <h2 className="text-sm font-semibold text-white">Top users by tokens used</h2>
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <h2 className="text-sm font-semibold text-[var(--text)]">Top users by tokens used</h2>
         </div>
         {o.top_users.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-slate-500">No usage yet</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-slate-400 border-b border-white/[0.06]">
+              <tr className="text-xs text-slate-400 border-b border-[var(--border)]">
                 <th className="text-left px-5 py-2.5 font-medium">User</th>
                 <th className="text-right px-5 py-2.5 font-medium">Tokens used</th>
                 <th className="text-right px-5 py-2.5 font-medium">Leads</th>
@@ -310,19 +310,19 @@ export default function DashboardPage() {
                 <th className="text-right px-5 py-2.5 font-medium">Profit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody className="divide-y divide-[var(--border)]">
               {o.top_users.map((u, i) => (
-                <tr key={i} className="hover:bg-white/[0.02]">
+                <tr key={i} className="hover:bg-[var(--hover)]">
                   <td className="px-5 py-3">
-                    <p className="text-white font-medium">{u.name || '—'}</p>
+                    <p className="text-[var(--text)] font-medium">{u.name || '—'}</p>
                     <p className="text-xs text-slate-500">{u.email}</p>
                   </td>
-                  <td className="px-5 py-3 text-right text-white font-semibold">{num(u.tokens_used)}</td>
+                  <td className="px-5 py-3 text-right text-[var(--text)] font-semibold">{num(u.tokens_used)}</td>
                   <td className="px-5 py-3 text-right text-slate-300">{num(u.leads)}</td>
                   <td className="px-5 py-3 text-right text-slate-300">{num(u.calls)}</td>
                   <td className="px-5 py-3 text-right text-sky-400">{inr(u.cost_inr)}</td>
                   <td className="px-5 py-3 text-right text-emerald-400">{inr(u.revenue)}</td>
-                  <td className={`px-5 py-3 text-right font-medium ${u.profit >= 0 ? 'text-white' : 'text-rose-400'}`}>{inr(u.profit)}</td>
+                  <td className={`px-5 py-3 text-right font-medium ${u.profit >= 0 ? 'text-[var(--text)]' : 'text-rose-400'}`}>{inr(u.profit)}</td>
                 </tr>
               ))}
             </tbody>

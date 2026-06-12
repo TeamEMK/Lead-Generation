@@ -111,7 +111,7 @@ export default function InvoicesPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Invoices</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Invoices</h1>
           <p className="text-slate-400 text-sm mt-1">{invoices.length} invoices generated</p>
         </div>
         <div className="relative">
@@ -119,14 +119,14 @@ export default function InvoicesPage() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search invoice, user, plan…"
-            className="pl-9 pr-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-64"
+            className="pl-9 pr-4 py-2 rounded-xl bg-[var(--hover)] border border-[var(--border)] text-sm text-[var(--text)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-64"
           />
         </div>
       </div>
 
       {error && <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">{error}</div>}
 
-      <div className="bg-[#0f1629] border border-white/[0.07] rounded-2xl overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
@@ -135,29 +135,29 @@ export default function InvoicesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-[var(--border)]">
                   {['Invoice #', 'Customer', 'Plan', 'Amount (incl. GST)', 'Date', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-[var(--border)]">
                 {filtered.map(inv => (
-                  <tr key={inv.id} className="hover:bg-white/[0.02] transition-colors">
+                  <tr key={inv.id} className="hover:bg-[var(--hover)] transition-colors">
                     <td className="px-4 py-3 font-mono text-brand-400 font-semibold whitespace-nowrap">{inv.invoice_number}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <p className="font-medium text-white">{inv.user_name}</p>
+                      <p className="font-medium text-[var(--text)]">{inv.user_name}</p>
                       <p className="text-xs text-slate-500">{inv.user_email}</p>
                       {inv.business_name && <p className="text-xs text-slate-600">{inv.business_name}</p>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 text-xs border border-brand-500/20">{inv.plan_name}</span>
                     </td>
-                    <td className="px-4 py-3 font-bold text-white whitespace-nowrap">₹{inv.amount_paid_inr.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-3 font-bold text-[var(--text)] whitespace-nowrap">₹{inv.amount_paid_inr.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmt(inv.created_at)}</td>
                     <td className="px-4 py-3">
                       <button onClick={() => printInvoice(inv)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs text-slate-300 hover:text-white transition-all">
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--hover)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs text-slate-300 hover:text-[var(--text)] transition-all">
                         <Printer className="w-3.5 h-3.5" />
                         Print
                       </button>

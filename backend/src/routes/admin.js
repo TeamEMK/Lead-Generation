@@ -195,10 +195,12 @@ router.get('/leads', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT ul.id, ul.keyword, ul.assigned_at,
              l.business_name, l.phone, l.website, l.email, l.address,
-             u.name AS user_name, u.email AS user_email
+             COALESCE(u.name, ul.owner_name) AS user_name,
+             COALESCE(u.email, ul.owner_email) AS user_email,
+             (ul.user_id IS NULL) AS owner_deleted
       FROM user_leads ul
       JOIN leads l ON l.id = ul.lead_id
-      JOIN users u ON u.id = ul.user_id
+      LEFT JOIN users u ON u.id = ul.user_id
       ORDER BY ul.assigned_at DESC
       LIMIT 5000
     `);

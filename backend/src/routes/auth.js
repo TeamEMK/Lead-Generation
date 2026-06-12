@@ -97,6 +97,13 @@ router.delete('/account', requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     const valid = await bcrypt.compare(password, rows[0].password_hash);
     if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+    // Snapshot the owner onto their leads so they stay visible in admin after
+    // the account is gone (the FK then SET NULLs user_id on delete).
+    await pool.query(
+      `UPDATE user_leads SET owner_email = u.email, owner_name = u.name
+       FROM users u WHERE user_leads.user_id = $1 AND u.id = $1`,
+      [req.user.id]
+    );
     await pool.query('DELETE FROM users WHERE id = $1', [req.user.id]);
     res.json({ success: true });
   } catch (err) {

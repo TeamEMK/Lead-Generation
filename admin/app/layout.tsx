@@ -6,9 +6,12 @@ export const metadata: Metadata = {
   description: 'Admin dashboard',
 }
 
+const themeScript = `(function(){try{var t=localStorage.getItem('admin_theme');if(t? t==='dark' : true){document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
       <body>{children}</body>
     </html>
   )

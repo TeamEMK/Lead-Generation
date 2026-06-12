@@ -16,16 +16,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080c18]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
         <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-[#080c18]">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg)]">
       <Sidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 h-screen overflow-y-auto">{children}</main>
     </div>
   )
 }
